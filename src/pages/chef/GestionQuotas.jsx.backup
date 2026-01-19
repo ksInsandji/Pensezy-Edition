@@ -1,0 +1,585 @@
+import React, { useState, useEffect } from 'react';
+import { Layout } from '../../components/layout/Layout';
+import {
+  Save, Plus, Trash2, Edit2, AlertCircle, CheckCircle,
+  Users, TrendingUp, Sliders, UserX, UserCheck
+} from 'lucide-react';
+import axios from '../../api/axios';
+import { ENDPOINTS } from '../../api/endpoints';
+
+/**
+ * Page de gestion des quotas d'encadrement par le Chef de département
+ * Permet de configurer les quotas par grade et par enseignant individuellement
+ */
+const GestionQuotas = () => {
+  const [quotasGrade, setQuotasGrade] = useState([]);
+  const [enseignants, setEnseignants] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState({ type: '', text: '' });
+  const [activeTab, setActiveTab] = useState('grades'); // 'grades' ou 'enseignants'
+  const [editingGrade, setEditingGrade] = useState(null);
+  const [newQuotaGrade, setNewQuotaGrade] = useState({ grade: '', quota: '' });
+  const [anneeAcademique, setAnneeAcademique] = useState('2024-2025');
+
+  // Grades disponibles
+  const gradesDisponibles = [
+    'Professeur',
+    'Maître de Conférences',
+    'Chargé de Cours',
+    'Assistant',
+    'Maître Assistant'
+  ];
+
+  useEffect(() => {
+    chargerDonnees();
+  }, [anneeAcademique]);
+
+  const chargerDonnees = async () => {
+    try {
+      setLoading(true);
+      const [quotasRes, enseignantsRes] = await Promise.all([
+        axios.get(`${ENDPOINTS.CHOIX_CHEF_QUOTAS}?annee=${anneeAcademique}`),
+        axios.get(ENDPOINTS.CHOIX_CHEF_ENSEIGNANTS_QUOTAS)
+      ]);
+
+      setQuotasGrade(quotasRes.data.data?.quotas_grade || []);
+      setEnseignants(enseignantsRes.data.data || []);
+    } catch (error) {
+      console.error('Erreur chargement:', error);
+      afficherMessage('error', 'Erreur lors du chargement des données');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const afficherMessage = (type, text) => {
+    setMessage({ type, text });
+    setTimeout(() => setMessage({ type: '', text: '' }), 5000);
+  };
+
+  const ajouterQuotaGrade = async () => {
+    if (!newQuotaGrade.grade || !newQuotaGrade.quota) {
+      afficherMessage('error', 'Veuillez remplir tous les champs');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await axios.post(ENDPOINTS.CHOIX_CHEF_QUOTAS_GRADE_CREATE, {
+        grade_ens: newQuotaGrade.grade,
+        quota_max: parseInt(newQuotaGrade.quota),
+        annee_academique: anneeAcademique
+      });
+
+      afficherMessage('success', 'Quota par grade ajouté avec succès');
+      setNewQuotaGrade({ grade: '', quota: '' });
+      await chargerDonnees();
+    } catch (error) {
+      console.error('Erreur ajout quota:', error);
+      afficherMessage('error', error.response?.data?.message || 'Erreur lors de l\'ajout');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const modifierQuotaGrade = async (quota) => {
+    if (!quota.quota_max || quota.quota_max < 0) {
+      afficherMessage('error', 'Le quota doit être un nombre positif');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await axios.put(ENDPOINTS.CHOIX_CHEF_QUOTAS_GRADE_UPDATE(quota.id_quota), {
+        quota_max: parseInt(quota.quota_max)
+      });
+
+      afficherMessage('success', 'Quota par grade modifié avec succès');
+      setEditingGrade(null);
+      await chargerDonnees();
+    } catch (error) {
+      console.error('Erreur modification quota:', error);
+      afficherMessage('error', error.response?.data?.message || 'Erreur lors de la modification');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const supprimerQuotaGrade = async (idQuota) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce quota par grade ?')) {
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await axios.delete(ENDPOINTS.CHOIX_CHEF_QUOTAS_GRADE_DELETE(idQuota));
+      afficherMessage('success', 'Quota par grade supprimé avec succès');
+      await chargerDonnees();
+    } catch (error) {
+      console.error('Erreur suppression quota:', error);
+      afficherMessage('error', error.response?.data?.message || 'Erreur lors de la suppression');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const modifierQuotaEnseignant = async (enseignant, quotaPersonnalise) => {
+    try {
+      setSaving(true);
+      await axios.put(ENDPOINTS.CHOIX_CHEF_QUOTA_ENSEIGNANT(enseignant.matricule_ens), {
+        quota_personnalise: quotaPersonnalise === '' ? null : parseInt(quotaPersonnalise)
+      });
+
+      afficherMessage('success', 'Quota enseignant modifié avec succès');
+      await chargerDonnees();
+    } catch (error) {
+      console.error('Erreur modification quota enseignant:', error);
+      afficherMessage('error', error.response?.data?.message || 'Erreur lors de la modification');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleDisponibilite = async (enseignant) => {
+    try {
+      setSaving(true);
+      await axios.put(ENDPOINTS.CHOIX_CHEF_DISPONIBILITE(enseignant.matricule_ens), {
+        disponible_encadrement: !enseignant.disponible_encadrement
+      });
+
+      afficherMessage('success', 'Disponibilité mise à jour');
+      await chargerDonnees();
+    } catch (error) {
+      console.error('Erreur modification disponibilité:', error);
+      afficherMessage('error', error.response?.data?.message || 'Erreur lors de la modification');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const getQuotaColor = (enseignant) => {
+    const quota = enseignant.quota_personnalise || enseignant.quota_par_grade;
+    if (!quota) return 'text-green-600';
+
+    const ratio = enseignant.nb_encadrements_actifs / quota;
+    if (ratio >= 1) return 'text-red-600';
+    if (ratio >= 0.8) return 'text-orange-600';
+    return 'text-green-600';
+  };
+
+  const getProgressBarColor = (enseignant) => {
+    const quota = enseignant.quota_personnalise || enseignant.quota_par_grade;
+    if (!quota) return 'bg-green-500';
+
+    const ratio = enseignant.nb_encadrements_actifs / quota;
+    if (ratio >= 1) return 'bg-red-500';
+    if (ratio >= 0.8) return 'bg-orange-500';
+    return 'bg-green-500';
+  };
+
+  const calculerStatistiques = () => {
+    const total = enseignants.length;
+    const disponibles = enseignants.filter(e => e.disponible_encadrement).length;
+    const quotasAtteints = enseignants.filter(e => {
+      const quota = e.quota_personnalise || e.quota_par_grade;
+      return quota && e.nb_encadrements_actifs >= quota;
+    }).length;
+    const quotasPersonnalises = enseignants.filter(e => e.quota_personnalise !== null).length;
+
+    return { total, disponibles, quotasAtteints, quotasPersonnalises };
+  };
+
+  const stats = calculerStatistiques();
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
+      <div className="space-y-6">
+      {/* En-tête */}
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          Gestion des Quotas d'Encadrement
+        </h1>
+        <p className="text-gray-600">
+          Configurez les quotas par grade ou individuellement par enseignant
+        </p>
+      </div>
+
+      {/* Messages */}
+      {message.text && (
+        <div className={`mb-6 p-4 rounded-lg ${
+          message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+        }`}>
+          <div className="flex items-center">
+            {message.type === 'success' ? (
+              <CheckCircle className="w-5 h-5 mr-2" />
+            ) : (
+              <AlertCircle className="w-5 h-5 mr-2" />
+            )}
+            {message.text}
+          </div>
+        </div>
+      )}
+
+      {/* Statistiques */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Total Enseignants</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+            </div>
+            <Users className="w-8 h-8 text-blue-600" />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Disponibles</p>
+              <p className="text-2xl font-bold text-green-600">{stats.disponibles}</p>
+            </div>
+            <UserCheck className="w-8 h-8 text-green-600" />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Quotas Atteints</p>
+              <p className="text-2xl font-bold text-red-600">{stats.quotasAtteints}</p>
+            </div>
+            <AlertCircle className="w-8 h-8 text-red-600" />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Quotas Personnalisés</p>
+              <p className="text-2xl font-bold text-purple-600">{stats.quotasPersonnalises}</p>
+            </div>
+            <Sliders className="w-8 h-8 text-purple-600" />
+          </div>
+        </div>
+      </div>
+
+      {/* Sélecteur d'année académique */}
+      <div className="bg-white rounded-lg shadow p-4 mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Année académique
+        </label>
+        <select
+          value={anneeAcademique}
+          onChange={(e) => setAnneeAcademique(e.target.value)}
+          className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        >
+          <option value="2024-2025">2024-2025</option>
+          <option value="2023-2024">2023-2024</option>
+          <option value="2022-2023">2022-2023</option>
+        </select>
+      </div>
+
+      {/* Onglets */}
+      <div className="bg-white rounded-lg shadow mb-6">
+        <div className="border-b border-gray-200">
+          <nav className="flex -mb-px">
+            <button
+              onClick={() => setActiveTab('grades')}
+              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'grades'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center">
+                <TrendingUp className="w-5 h-5 mr-2" />
+                Quotas par Grade
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('enseignants')}
+              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'enseignants'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center">
+                <Users className="w-5 h-5 mr-2" />
+                Quotas Individuels
+              </div>
+            </button>
+          </nav>
+        </div>
+
+        {/* Contenu Quotas par Grade */}
+        {activeTab === 'grades' && (
+          <div className="p-6">
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Ajouter un quota par grade
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Grade
+                  </label>
+                  <select
+                    value={newQuotaGrade.grade}
+                    onChange={(e) => setNewQuotaGrade({ ...newQuotaGrade, grade: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Sélectionner un grade</option>
+                    {gradesDisponibles
+                      .filter(g => !quotasGrade.some(q => q.grade_ens === g))
+                      .map(grade => (
+                        <option key={grade} value={grade}>{grade}</option>
+                      ))
+                    }
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Quota maximum
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={newQuotaGrade.quota}
+                    onChange={(e) => setNewQuotaGrade({ ...newQuotaGrade, quota: e.target.value })}
+                    placeholder="Ex: 10"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <button
+                    onClick={ajouterQuotaGrade}
+                    disabled={saving || !newQuotaGrade.grade || !newQuotaGrade.quota}
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                  >
+                    <Plus className="w-5 h-5 mr-2" />
+                    Ajouter
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Liste des quotas par grade */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Quotas configurés
+              </h3>
+              {quotasGrade.length === 0 ? (
+                <p className="text-gray-500 text-center py-8">
+                  Aucun quota par grade configuré. Les enseignants n'auront pas de limite d'encadrements.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {quotasGrade.map((quota) => (
+                    <div
+                      key={quota.id_quota}
+                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900">{quota.grade_ens}</p>
+                        <p className="text-sm text-gray-500">
+                          {quota.nb_enseignants_concernes} enseignant(s) concerné(s)
+                        </p>
+                      </div>
+
+                      {editingGrade === quota.id_quota ? (
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="number"
+                            min="1"
+                            value={quota.quota_max}
+                            onChange={(e) => {
+                              const updated = quotasGrade.map(q =>
+                                q.id_quota === quota.id_quota
+                                  ? { ...q, quota_max: e.target.value }
+                                  : q
+                              );
+                              setQuotasGrade(updated);
+                            }}
+                            className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                          <button
+                            onClick={() => modifierQuotaGrade(quota)}
+                            disabled={saving}
+                            className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 transition-colors"
+                          >
+                            <Save className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => setEditingGrade(null)}
+                            className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                          >
+                            Annuler
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl font-bold text-gray-900">
+                            {quota.quota_max}
+                          </span>
+                          <span className="text-gray-500">max</span>
+                          <button
+                            onClick={() => setEditingGrade(quota.id_quota)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          >
+                            <Edit2 className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => supprimerQuotaGrade(quota.id_quota)}
+                            disabled={saving}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Contenu Quotas Individuels */}
+        {activeTab === 'enseignants' && (
+          <div className="p-6">
+            <div className="mb-4">
+              <p className="text-sm text-gray-600">
+                Les quotas personnalisés remplacent les quotas par grade pour un enseignant spécifique.
+                Laissez vide pour utiliser le quota par grade.
+              </p>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Enseignant
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Grade
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Quota Grade
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Quota Personnel
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Utilisation
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Disponibilité
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {enseignants.map((ens) => {
+                    const quotaEffectif = ens.quota_personnalise || ens.quota_par_grade;
+                    const pourcentage = quotaEffectif
+                      ? Math.min((ens.nb_encadrements_actifs / quotaEffectif) * 100, 100)
+                      : 0;
+
+                    return (
+                      <tr key={ens.matricule_ens} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {ens.prenom_ens} {ens.nom_ens}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {ens.matricule_ens}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {ens.grade_ens}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {ens.quota_par_grade || 'Illimité'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <input
+                            type="number"
+                            min="0"
+                            value={ens.quota_personnalise || ''}
+                            onChange={(e) => modifierQuotaEnseignant(ens, e.target.value)}
+                            placeholder="Auto"
+                            className="w-24 px-3 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <span className={`text-sm font-medium mr-3 ${getQuotaColor(ens)}`}>
+                              {ens.nb_encadrements_actifs} / {quotaEffectif || '∞'}
+                            </span>
+                            {quotaEffectif && (
+                              <div className="flex-1 w-24">
+                                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full ${getProgressBarColor(ens)} transition-all duration-300`}
+                                    style={{ width: `${pourcentage}%` }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <button
+                            onClick={() => toggleDisponibilite(ens)}
+                            disabled={saving}
+                            className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                              ens.disponible_encadrement
+                                ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                                : 'bg-red-100 text-red-800 hover:bg-red-200'
+                            } disabled:opacity-50`}
+                          >
+                            {ens.disponible_encadrement ? (
+                              <>
+                                <UserCheck className="w-4 h-4 mr-1" />
+                                Disponible
+                              </>
+                            ) : (
+                              <>
+                                <UserX className="w-4 h-4 mr-1" />
+                                Indisponible
+                              </>
+                            )}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+      </div>
+    </Layout>
+  );
+};
+
+export default GestionQuotas;
