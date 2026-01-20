@@ -1,7 +1,12 @@
 import React from 'react';
 import { clsx } from 'clsx';
 
-export const Input = React.forwardRef(({ 
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  label?: string
+  error?: string
+}
+
+export const Input = React.forwardRef<HTMLInputElement, InputProps>(({
   label, 
   error, 
   type = 'text', 
