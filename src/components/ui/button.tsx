@@ -2,6 +2,12 @@ import React from 'react';
 import { Loader2 } from 'lucide-react';
 import { clsx } from 'clsx';
 
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'secondary' | 'danger' | 'outline'
+  size?: 'sm' | 'md' | 'lg'
+  loading?: boolean
+}
+
 export const Button = ({ 
   children, 
   variant = 'primary', 
@@ -10,7 +16,7 @@ export const Button = ({
   disabled = false,
   className = '',
   ...props 
-}) => {
+}: ButtonProps) => {
   const baseStyles = 'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2';
   
   const variants = {

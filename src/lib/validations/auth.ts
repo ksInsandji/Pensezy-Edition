@@ -7,7 +7,7 @@ export const loginSchema = z.object({
 
 export const registerSchema = loginSchema.extend({
   fullName: z.string().min(2, { message: "Nom complet requis" }),
-  role: z.enum(["user", "seller"], { required_error: "Veuillez choisir un rôle" }).default("user"),
+  role: z.enum(["user", "seller"]),
 })
 
 export type LoginInput = z.infer<typeof loginSchema>

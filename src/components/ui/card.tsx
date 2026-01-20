@@ -1,7 +1,16 @@
 import React from 'react';
 import { clsx } from 'clsx';
 
-export const Card = ({ children, className = '', title, action, onClick, hoverable = false }) => {
+interface CardProps {
+  children: React.ReactNode
+  className?: string
+  title?: React.ReactNode
+  action?: React.ReactNode
+  onClick?: () => void
+  hoverable?: boolean
+}
+
+export const Card = ({ children, className = '', title, action, onClick, hoverable = false }: CardProps) => {
   const isClickable = Boolean(onClick);
 
   const cardClasses = clsx(

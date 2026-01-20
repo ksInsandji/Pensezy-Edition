@@ -1,13 +1,12 @@
 "use server";
 
-import { createServerActionClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { LoginInput, RegisterInput } from "@/lib/validations/auth";
 
 // --- ACTION INSCRIPTION ---
 export async function signUpAction(data: RegisterInput) {
-  const supabase = createServerActionClient({ cookies });
+  const supabase = await createClient();
   const origin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
   // 1. Création du compte dans Supabase Auth
@@ -35,7 +34,7 @@ export async function signUpAction(data: RegisterInput) {
 
 // --- ACTION CONNEXION ---
 export async function signInAction(data: LoginInput) {
-  const supabase = createServerActionClient({ cookies });
+  const supabase = await createClient();
 
   // 1. Connexion
   const { error } = await supabase.auth.signInWithPassword({
@@ -53,18 +52,27 @@ export async function signInAction(data: LoginInput) {
   
   // On lit le rôle stocké soit dans metadata, soit en faisant une requête DB
   // Ici, utilisons une requête DB pour être 100% sûr du rôle actuel
+
+  if (!user?.id) {
+     return { error: "Utilisateur introuvable" };
+  }
+
   const { data: profile } = await supabase
     .from('profiles')
     .select('role')
-    .eq('id', user?.id)
+    .eq('id', user.id)
     .single();
 
   const role = profile?.role || 'user';
 
   // 3. Redirection intelligente
-  if (role === 'admin') {
+  // Note: 'role' typé par Supabase peut être plus restrictif que ce qu'on attend.
+  // On caste en string pour la comparaison souple.
+  const userRole = role as string;
+
+  if (userRole === 'admin') {
     redirect('/admin/validations');
-  } else if (role === 'seller' || user?.user_metadata.role === 'seller') {
+  } else if (userRole === 'seller' || user?.user_metadata.role === 'seller') {
     // Si l'utilisateur est un vendeur, direction son dashboard
     redirect('/seller/products');
   } else {
