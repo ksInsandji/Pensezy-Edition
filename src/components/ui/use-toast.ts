@@ -1,3 +1,5 @@
+"use client";
+
 // Placeholder for use-toast
 import { useState, useEffect } from 'react'
 
