@@ -1,41 +1,55 @@
-<<<<<<< HEAD
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pensezy Edition
 
-## Getting Started
+Plateforme de vente de livres numériques et physiques (E-commerce Hybride).
 
-First, run the development server:
+## Pré-requis
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Node.js 18+
+- Un projet Supabase
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Installation
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1.  **Installer les dépendances :**
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+    ```bash
+    npm install
+    ```
 
-## Learn More
+2.  **Configurer l'environnement :**
 
-To learn more about Next.js, take a look at the following resources:
+    Dupliquez le fichier `.env.example` et renommez-le en `.env.local` :
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+    ```bash
+    cp .env.example .env.local
+    ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+    Ouvrez `.env.local` et remplissez les variables avec vos clés Supabase (disponibles dans *Project Settings > API*) :
 
-## Deploy on Vercel
+    ```env
+    NEXT_PUBLIC_SUPABASE_URL=https://votre-projet.supabase.co
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=votre-cle-publique-anon
+    ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+3.  **Lancer le serveur de développement :**
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-=======
-# Pensezy-Edition
-Plateforme de vente de livre numérique et physique.
->>>>>>> 0b2d55d89c27e8340162979ab9dcd5714c6027ce
+    ```bash
+    npm run dev
+    ```
+
+    Ouvrez [http://localhost:3000](http://localhost:3000) dans votre navigateur.
+
+## Architecture
+
+- **Frontend** : Next.js 14 (App Router), Tailwind CSS, Shadcn/UI
+- **Backend/Database** : Supabase (Auth, PostgreSQL, Storage)
+- **Authentification** : `@supabase/ssr`
+
+## Structure du projet
+
+- `src/app` : Pages et Routes (App Router)
+  - `(public)` : Pages accessibles à tous (Accueil, Catalogue)
+  - `(auth)` : Pages d'authentification (Login, Register)
+  - `seller` : Espace Vendeur protégé
+- `src/components` : Composants réutilisables (UI, Layout)
+- `src/lib` : Utilitaires (Supabase client, validation Zod)
+- `migrations` : Schéma SQL de la base de données
