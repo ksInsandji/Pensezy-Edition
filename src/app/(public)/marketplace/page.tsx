@@ -24,6 +24,7 @@ export default async function MarketplacePage(props: {
       *,
       book:books!inner(*)
     `)
+    .eq("status", "active")
     .order("created_at", { ascending: false });
 
   if (type === "physical") {
