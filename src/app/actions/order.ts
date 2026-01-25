@@ -61,13 +61,25 @@ export async function createOrder(params: CreateOrderParams) {
     // Optimization: We could pass type from client, but verify here is safer.
     const { data: listing } = await supabase
       .from("listings")
-      .select("type, stock")
+      .select("type, stock, seller_id")
       .eq("id", item.listingId)
       .single();
 
     if (listing) {
+      // 3. Process Financial Transaction (Credit Seller)
+      const totalPrice = item.price * item.quantity;
+      const { error: rpcError } = await supabase.rpc('process_sale', {
+        p_listing_id: item.listingId,
+        p_seller_id: listing.seller_id,
+        p_quantity: item.quantity,
+        p_total_price: totalPrice,
+        p_order_id: order.id
+      });
+
+      if (rpcError) console.error("Wallet update failed:", rpcError);
+
       if (listing.type === 'digital') {
-         // 3. Grant Library Access
+         // 4. Grant Library Access
          const { error: libError } = await supabase
             .from("library_access")
             .insert({
@@ -79,7 +91,7 @@ export async function createOrder(params: CreateOrderParams) {
          if (libError) console.error("Library access grant failed (maybe duplicate):", libError);
 
       } else {
-          // 4. Update Stock (Physical)
+          // 5. Update Stock (Physical)
           const newStock = Math.max(0, listing.stock - item.quantity);
           await supabase
             .from("listings")
