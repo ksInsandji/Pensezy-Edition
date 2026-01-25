@@ -1,19 +1,16 @@
 import Link from "next/link";
-import { Download, Box, Book, ShoppingCart } from "lucide-react";
+import { Download, Box, Book } from "lucide-react";
 import { Button } from "@/components/ui/button";
+// Importation du type Database depuis votre fichier de types
+import { Database } from "@/types/database.types";
+
+// Définition des types basés sur le schéma réel
+type Listing = Database['public']['Tables']['listings']['Row'];
+type BookData = Database['public']['Tables']['books']['Row'];
 
 interface ProductCardProps {
-  listing: {
-    id: string;
-    price: number;
-    type: "physical" | "digital";
-    stock: number;
-    book: {
-      id: string;
-      title: string;
-      author: string;
-      cover_url: string | null;
-    };
+  listing: Listing & {
+    book: BookData;
   };
 }
 
@@ -62,7 +59,20 @@ export function ProductCard({ listing }: ProductCardProps) {
         </Link>
         <p className="text-sm text-gray-500 mb-3">{book.author}</p>
 
-        <div className="flex items-end justify-between mt-4">
+        {/* Gestion du stock et type de produit */}
+        <div className="mb-4">
+          {listing.type === "physical" ? (
+            <p className="text-xs font-medium text-gray-500">
+              {listing.stock && listing.stock > 0 
+                ? `${listing.stock} exemplaires en stock` 
+                : "Rupture de stock"}
+            </p>
+          ) : (
+            <p className="text-xs font-medium text-blue-600">Lecture instantanée sécurisée</p>
+          )}
+        </div>
+
+        <div className="flex items-end justify-between">
           <div>
             <span className="block text-xs text-gray-400 mb-0.5">Prix</span>
             <span className="text-xl font-bold text-gray-900">
