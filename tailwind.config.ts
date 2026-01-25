@@ -2,6 +2,29 @@ import type { Config } from "tailwindcss";
 // Correction 2 : On importe le plugin proprement au lieu d'utiliser require()
 import tailwindcssAnimate from "tailwindcss-animate";
 
+// Ajoutez ces animations dans votre tailwind.config.js
+module.exports = {
+  theme: {
+    extend: {
+      animation: {
+        'gradient': 'gradient 8s ease infinite',
+      },
+      keyframes: {
+        gradient: {
+          '0%, 100%': {
+            'background-size': '200% 200%',
+            'background-position': 'left center'
+          },
+          '50%': {
+            'background-size': '200% 200%',
+            'background-position': 'right center'
+          }
+        }
+      }
+    }
+  }
+}
+
 const config: Config = {
   // Correction 1 : On utilise "class" en string simple, pas un tableau ["class"]
   darkMode: "class",
