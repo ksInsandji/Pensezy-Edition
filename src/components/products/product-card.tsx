@@ -21,7 +21,7 @@ export function ProductCard({ listing }: ProductCardProps) {
   const { book } = listing;
 
   return (
-    <div className="group bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
+    <div className="group bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
       {/* Image Container */}
       <Link href={`/marketplace/${listing.id}`} className="block h-64 bg-gray-100 relative overflow-hidden">
         {book.cover_url ? (

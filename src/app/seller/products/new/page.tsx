@@ -218,19 +218,21 @@ export default function NewProductPage() {
               />
             </div>
 
-            <Button type="submit" className="w-full bg-blue-900 hover:bg-blue-800" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {uploadProgress || "Chargement..."}
-                </>
-              ) : (
-                <>
-                  <Upload className="w-4 h-4 mr-2" />
-                  Mettre en vente
-                </>
-              )}
-            </Button>
+            <div className="flex justify-end pt-4">
+                <Button type="submit" className="w-full sm:w-auto px-8 bg-blue-900 hover:bg-blue-800" disabled={isLoading}>
+                {isLoading ? (
+                    <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {uploadProgress || "Chargement..."}
+                    </>
+                ) : (
+                    <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Mettre en vente
+                    </>
+                )}
+                </Button>
+            </div>
         </form>
       </Card>
     </div>

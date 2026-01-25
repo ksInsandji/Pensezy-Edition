@@ -5,7 +5,7 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 30 10% 97%; /* Warm Stone/Paper background */
     --foreground: 222.2 84% 4.9%;
  
     --card: 0 0% 100%;
@@ -14,13 +14,13 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
  
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 215 80% 25%; /* Stronger Deep Blue */
     --primary-foreground: 210 40% 98%;
  
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
  
-    --muted: 210 40% 96.1%;
+    --muted: 210 20% 96%;
     --muted-foreground: 215.4 16.3% 46.9%;
  
     --accent: 210 40% 96.1%;
