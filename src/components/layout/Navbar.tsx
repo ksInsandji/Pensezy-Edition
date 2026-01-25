@@ -55,7 +55,7 @@ export function Navbar() {
               <span className="font-bold text-xl text-blue-900">Pensezy Edition</span>
             </Link>
             <div className="hidden md:ml-6 md:flex md:space-x-8">
-              <Link href="/browse" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-blue-500 text-sm font-medium">
+              <Link href="/marketplace" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-blue-500 text-sm font-medium">
                 Catalogue
               </Link>
               <Link href="/about" className="text-gray-500 hover:text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
@@ -68,11 +68,9 @@ export function Navbar() {
           <div className="hidden md:flex items-center gap-4">
             {user ? (
               <>
-                {(user.user_metadata?.role === 'seller' || user.user_metadata?.role === 'admin') && (
-                  <Link href="/seller/dashboard">
-                    <Button variant="outline" size="sm">Espace Vendeur</Button>
-                  </Link>
-                )}
+                <Link href="/seller/dashboard">
+                  <Button variant="outline" size="sm">Espace Vendeur</Button>
+                </Link>
                 <Link href="/profile">
                   <Button variant="outline" size="sm" className="gap-2">
                     <UserIcon className="h-4 w-4" />
@@ -127,7 +125,7 @@ export function Navbar() {
       {isMenuOpen && (
         <div className="md:hidden">
           <div className="pt-2 pb-3 space-y-1">
-            <Link href="/browse" className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800">
+            <Link href="/marketplace" className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800">
               Catalogue
             </Link>
             <Link href="/about" className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800">

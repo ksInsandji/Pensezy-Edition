@@ -2,54 +2,68 @@
 
 Plateforme de vente de livres numériques et physiques (E-commerce Hybride).
 
-## Pré-requis
+## 📘 Documentation
 
+Voir le **[Cahier des Charges Technique (SPECIFICATIONS.md)](./SPECIFICATIONS.md)** pour une vision complète de l'architecture, des modules et du schéma de données.
+
+## 🚀 Démarrage Rapide
+
+### 1. Pré-requis
 - Node.js 18+
 - Un projet Supabase
 
-## Installation
+### 2. Installation
 
-1.  **Installer les dépendances :**
+```bash
+npm install
+```
 
-    ```bash
-    npm install
-    ```
+### 3. Configuration de l'environnement
 
-2.  **Configurer l'environnement :**
+Dupliquez le fichier `.env.example` en `.env.local` et ajoutez vos clés Supabase :
 
-    Dupliquez le fichier `.env.example` et renommez-le en `.env.local` :
+```bash
+cp .env.example .env.local
+```
 
-    ```bash
-    cp .env.example .env.local
-    ```
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://votre-projet.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=votre-cle-publique-anon
+```
 
-    Ouvrez `.env.local` et remplissez les variables avec vos clés Supabase (disponibles dans *Project Settings > API*) :
+### 4. Base de Données & Storage
 
-    ```env
-    NEXT_PUBLIC_SUPABASE_URL=https://votre-projet.supabase.co
-    NEXT_PUBLIC_SUPABASE_ANON_KEY=votre-cle-publique-anon
-    ```
+Pour initialiser la base de données avec les tables et politiques de sécurité requises :
 
-3.  **Lancer le serveur de développement :**
+1.  Allez dans l'éditeur SQL de votre dashboard Supabase.
+2.  Copiez et exécutez le contenu de **`migrations/Complete_Schema.sql`**.
 
-    ```bash
-    npm run dev
-    ```
+Cela créera :
+- Les tables : `profiles`, `books`, `listings`, `orders`, `order_items`, `library_access`.
+- Les buckets Storage : `covers` (Public) et `book_files` (Privé).
+- Les politiques de sécurité (RLS) pour les données et le stockage.
 
-    Ouvrez [http://localhost:3000](http://localhost:3000) dans votre navigateur.
+### 5. Lancer le projet
 
-## Architecture
+```bash
+npm run dev
+```
+Accédez à [http://localhost:3000](http://localhost:3000).
 
-- **Frontend** : Next.js 14 (App Router), Tailwind CSS, Shadcn/UI
-- **Backend/Database** : Supabase (Auth, PostgreSQL, Storage)
-- **Authentification** : `@supabase/ssr`
+---
 
-## Structure du projet
+## 🏗 État d'avancement
 
-- `src/app` : Pages et Routes (App Router)
-  - `(public)` : Pages accessibles à tous (Accueil, Catalogue)
-  - `(auth)` : Pages d'authentification (Login, Register)
-  - `seller` : Espace Vendeur protégé
-- `src/components` : Composants réutilisables (UI, Layout)
-- `src/lib` : Utilitaires (Supabase client, validation Zod)
-- `migrations` : Schéma SQL de la base de données
+| Module | Statut | Description |
+| :--- | :---: | :--- |
+| **Authentification** | ✅ | Login, Register, Protection des routes via Middleware |
+| **Base de Données** | ✅ | Schéma PostgreSQL complet + RLS |
+| **Dashboard Vendeur** | ✅ | Liste des produits, Ajout (Physique/Numérique), Upload sécurisé |
+| **Catalogue (Marketplace)** | 🔄 | Recherche, Filtres, Fiche produit (Prochaine étape) |
+| **Liseuse Sécurisée** | ⏳ | Streaming PDF, Protection Canvas |
+| **Paiements** | ⏳ | Panier, Mobile Money, Wallet |
+
+## 🛠 Commandes Utiles
+
+- `npm run lint` : Vérification du code.
+- `npm run build` : Compilation pour la production.
