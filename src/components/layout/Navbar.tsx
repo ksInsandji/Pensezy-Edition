@@ -5,11 +5,14 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { BookOpen, ShoppingCart, User, Menu, X } from "lucide-react";
+import { useCartStore } from "@/store/cart-store";
 
 export function Navbar() {
   const [user, setUser] = useState<any>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const supabase = createClient();
+  const cartCount = useCartStore((state) => state.getCount());
 
   useEffect(() => {
     const getUser = async () => {
@@ -23,6 +26,11 @@ export function Navbar() {
     });
 
     return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    useCartStore.persist.rehydrate();
+    setMounted(true);
   }, []);
 
   const handleSignOut = async () => {
@@ -83,7 +91,11 @@ export function Navbar() {
             <Link href="/cart">
                 <Button variant="outline" size="sm" className="relative">
                     <ShoppingCart className="h-4 w-4" />
-                    {/* Badge placeholder */}
+                    {mounted && cartCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                        {cartCount}
+                      </span>
+                    )}
                 </Button>
             </Link>
           </div>
