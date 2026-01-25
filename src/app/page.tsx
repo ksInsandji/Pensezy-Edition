@@ -5,13 +5,15 @@ import {
   BookOpen, 
   Smartphone, 
   Star, 
-  //ArrowRight,
   ShieldCheck,
-  Zap
+  Zap,
+  ArrowRight,
+  BookMarked,
+  TrendingUp,
+  //Users
 } from "lucide-react";
 
 export default function HomePage() {
-  // NOUVELLES IMAGES : Simulations de couvertures de livres (cohérentes)
   const featuredBooks = [
     {
       id: 1,
@@ -48,136 +50,192 @@ export default function HomePage() {
   ];
 
   const categories = [
-    { name: "Scolaire", icon: BookOpen },
-    { name: "Romans", icon: BookOpen },
-    { name: "Tech", icon: Smartphone },
-    { name: "Business", icon: Zap },
-    { name: "Sciences", icon: ShieldCheck },
-    { name: "Loisirs", icon: Star },
+    { name: "Scolaire", icon: BookOpen, color: "from-blue-500 to-indigo-600", bgColor: "bg-blue-50", textColor: "text-blue-600" },
+    { name: "Romans", icon: BookMarked, color: "from-purple-500 to-pink-600", bgColor: "bg-purple-50", textColor: "text-purple-600" },
+    { name: "Tech", icon: Smartphone, color: "from-green-500 to-emerald-600", bgColor: "bg-green-50", textColor: "text-green-600" },
+    { name: "Business", icon: TrendingUp, color: "from-orange-500 to-red-600", bgColor: "bg-orange-50", textColor: "text-orange-600" },
+    { name: "Sciences", icon: ShieldCheck, color: "from-teal-500 to-cyan-600", bgColor: "bg-teal-50", textColor: "text-teal-600" },
+    { name: "Loisirs", icon: Star, color: "from-yellow-500 to-orange-600", bgColor: "bg-yellow-50", textColor: "text-yellow-600" },
   ];
 
   return (
-    <div className="min-h-screen">
-      {/* --- HERO SECTION (AMÉLIORÉE) --- */}
-      {/* Ajout d'un dégradé de fond et d'un motif subtil */}
-      <section className="relative bg-gradient-to-br from-orange-50 via-white to-stone-50 pt-20 pb-32 px-4 overflow-hidden">
-        {/* Motif décoratif */}
-        <div className="absolute inset-0 opacity-[0.03]" style={{backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '32px 32px'}}></div>
+    <div className="min-h-screen bg-gray-50">
+      {/* === HERO SECTION MODERNISÉE === */}
+      <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
+        {/* Background avec Glassmorphism */}
+        <div className="absolute inset-0 bg-gradient-to-br from-orange-400/10 via-white to-blue-400/10"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.15)_1px,transparent_0)] bg-[length:20px_20px] opacity-30"></div>
         
-        <div className="container mx-auto max-w-5xl relative z-10 text-center">
-          <span className="inline-block py-1 px-3 rounded-full bg-white text-orange-600 text-xs font-bold uppercase tracking-widest mb-6 shadow-sm border border-orange-100">
-            🚀 Nouveau Concept
-          </span>
-          
-          <h1 className="text-5xl md:text-7xl font-playfair font-bold text-stone-900 mb-8 leading-tight tracking-tight">
-            La librairie hybride <br/>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-orange-400">
-              du Cameroun
-            </span>
-          </h1>
-          
-          <p className="text-lg md:text-xl text-stone-500 mb-12 max-w-2xl mx-auto font-light leading-relaxed">
-            Une expérience d&apos;achat unique : Recevez vos livres physiques ou lisez-les instantanément en streaming sécurisé.
-          </p>
+        {/* Floating Elements */}
+        <div className="absolute top-20 left-10 w-64 h-64 bg-gradient-to-br from-orange-400/20 to-pink-400/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-10 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
 
-          {/* Barre de recherche ultra-propre */}
-          <div className="relative max-w-2xl mx-auto mb-12 group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-orange-600 to-orange-400 rounded-full blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-            <div className="relative flex items-center bg-white rounded-full shadow-xl overflow-hidden border border-stone-100">
-              <Search className="ml-6 text-stone-400 w-5 h-5" />
-              <input 
-                type="text" 
-                placeholder="Titre, auteur ou ISBN..." 
-                className="w-full px-4 py-4 text-stone-800 placeholder-stone-400 outline-none"
-              />
-              <button className="bg-stone-900 hover:bg-black text-white px-8 py-3 font-medium transition-colors text-sm">
-                Rechercher
-              </button>
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="max-w-5xl mx-auto text-center">
+            {/* Badge moderne */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 backdrop-blur-sm border border-white/20 shadow-lg mb-8">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-semibold text-gray-700 tracking-wide">Nouvelle génération de librairie</span>
+              <ArrowRight className="w-4 h-4 text-gray-400" />
             </div>
-          </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link 
-              href="/register" 
-              className="px-8 py-3.5 bg-orange-600 hover:bg-orange-700 text-white rounded-full font-semibold transition-all shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 transform hover:-translate-y-0.5"
-            >
-              Commencer
-            </Link>
-            <Link 
-              href="/catalog" 
-              className="px-8 py-3.5 text-stone-600 hover:text-stone-900 font-medium transition-colors"
-            >
-              Explorer le catalogue
-            </Link>
+            {/* Titre principal */}
+            <h1 className="text-6xl md:text-8xl font-black text-gray-900 leading-[0.9] mb-8">
+              <span className="block">Pensezy</span>
+              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 animate-gradient">
+                Edition
+              </span>
+            </h1>
+
+            <p className="text-xl md:text-2xl text-gray-600 mb-4 max-w-3xl mx-auto leading-relaxed font-light">
+              La première librairie hybride du Cameroun
+            </p>
+            <p className="text-lg text-gray-500 mb-12 max-w-2xl mx-auto">
+              Achetez vos livres physiques <span className="font-semibold text-gray-700">ET</span> accédez instantanément à la version numérique sécurisée
+            </p>
+
+            {/* Barre de recherche révolutionnaire */}
+            <div className="max-w-2xl mx-auto mb-12">
+              <div className="relative group">
+                <div className="absolute -inset-1 bg-gradient-to-r from-orange-500 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-40 transition duration-500"></div>
+                <div className="relative bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/30 p-2">
+                  <div className="flex items-center">
+                    <Search className="ml-6 text-gray-400 w-6 h-6" />
+                    <input 
+                      type="text" 
+                      placeholder="Rechercher un livre, auteur, ISBN..." 
+                      className="flex-1 px-4 py-4 text-lg text-gray-800 placeholder-gray-400 bg-transparent outline-none"
+                    />
+                    <button className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-8 py-4 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl transform hover:scale-105">
+                      Explorer
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <Link 
+                href="/register" 
+                className="group inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-gray-900 to-gray-800 hover:from-black hover:to-gray-900 text-white rounded-2xl font-bold transition-all shadow-xl hover:shadow-2xl transform hover:-translate-y-1"
+              >
+                Créer mon compte
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </Link>
+              <Link 
+                href="/catalog" 
+                className="inline-flex items-center gap-3 px-8 py-4 text-gray-700 hover:text-gray-900 font-semibold transition-all group"
+              >
+                Découvrir le catalogue
+                <div className="w-5 h-5 border-2 border-current rounded-full flex items-center justify-center group-hover:bg-gray-100 transition-all">
+                  <ArrowRight className="w-3 h-3" />
+                </div>
+              </Link>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* --- CATÉGORIES (Cleaner) --- */}
-      <section className="py-16 px-4 border-b border-stone-100">
+      {/* === CATÉGORIES MODERNISÉES === */}
+      <section className="py-20 px-4">
         <div className="container mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-6">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">Explorer par catégorie</h2>
+            <p className="text-xl text-gray-600">Trouvez exactement ce que vous cherchez</p>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
             {categories.map((cat, index) => (
               <button 
                 key={index}
-                className="flex flex-col items-center justify-center group"
+                className="group p-6 rounded-3xl bg-white hover:bg-gray-50 border border-gray-100 hover:border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2"
               >
-                <div className="w-14 h-14 bg-white rounded-2xl shadow-sm border border-stone-100 flex items-center justify-center text-stone-500 group-hover:text-orange-600 group-hover:border-orange-200 group-hover:shadow-md transition-all duration-300 mb-3">
-                  <cat.icon className="w-6 h-6" />
+                <div className={`w-16 h-16 rounded-2xl ${cat.bgColor} flex items-center justify-center mb-4 mx-auto group-hover:scale-110 transition-transform duration-300`}>
+                  <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${cat.color} flex items-center justify-center`}>
+                    <cat.icon className="w-5 h-5 text-white" />
+                  </div>
                 </div>
-                <span className="text-sm font-medium text-stone-600 group-hover:text-stone-900 transition-colors">{cat.name}</span>
+                <h3 className={`font-bold text-sm ${cat.textColor} group-hover:text-gray-900 transition-colors`}>
+                  {cat.name}
+                </h3>
               </button>
             ))}
           </div>
         </div>
       </section>
 
-      {/* --- LIVRES (Grille Premium) --- */}
-      <section className="py-24 px-4">
+      {/* === LIVRES PREMIUM === */}
+      <section className="py-20 px-4 bg-white">
         <div className="container mx-auto">
-          <div className="flex justify-between items-end mb-12">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-16 gap-6">
             <div>
-              <h2 className="text-3xl font-playfair font-bold text-stone-900">Sélection du moment</h2>
-              <p className="text-stone-500 mt-2 font-light">Nos meilleures ventes cette semaine</p>
+              <h2 className="text-4xl font-bold text-gray-900 mb-4">Sélection premium</h2>
+              <p className="text-xl text-gray-600">Les livres les plus demandés cette semaine</p>
             </div>
+            <Link 
+              href="/catalog" 
+              className="inline-flex items-center gap-2 text-orange-600 hover:text-orange-700 font-semibold group"
+            >
+              Voir tout le catalogue
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {featuredBooks.map((book) => (
-              <div key={book.id} className="group">
-                {/* Image Container avec ombre portée au survol */}
-                <div className="relative aspect-[2/3] mb-4 rounded-xl overflow-hidden bg-stone-100 shadow-lg group-hover:shadow-2xl transition-all duration-500 transform group-hover:-translate-y-2">
+              <div key={book.id} className="group cursor-pointer">
+                {/* Container de l'image avec effets avancés */}
+                <div className="relative aspect-[3/4] mb-6 rounded-3xl overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 shadow-lg group-hover:shadow-2xl transition-all duration-700 transform group-hover:-translate-y-3">
                   <Image 
                     src={book.cover} 
                     alt={book.title} 
                     fill
-                    className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-700"
+                    className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-700"
                   />
                   
+                  {/* Overlay gradient */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  
                   {/* Badges */}
-                  <div className="absolute top-3 left-3 flex gap-2">
-                    {book.type === 'digital' && (
-                      <span className="bg-white/90 backdrop-blur text-blue-600 text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider shadow-sm">
-                        Digital
-                      </span>
+                  <div className="absolute top-4 left-4">
+                    {book.type === 'digital' ? (
+                      <div className="flex items-center gap-2 bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+                        <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                        Streaming
+                      </div>
+                    ) : (
+                      <div className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+                        Physique
+                      </div>
                     )}
                   </div>
 
-                  {/* Bouton panier rapide au survol */}
-                  <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                    <button className="w-full bg-stone-900 text-white py-3 rounded-lg font-medium text-sm shadow-lg hover:bg-orange-600 transition-colors">
+                  {/* Quick Actions */}
+                  <div className="absolute inset-x-4 bottom-4 transform translate-y-full group-hover:translate-y-0 transition-transform duration-500">
+                    <button className="w-full bg-white/95 backdrop-blur-sm text-gray-900 py-3 rounded-2xl font-bold shadow-lg hover:bg-white hover:shadow-xl transition-all">
                       Ajouter au panier
                     </button>
                   </div>
                 </div>
 
-                {/* Info Produit */}
-                <div>
-                  <h3 className="font-bold text-lg text-stone-900 leading-snug mb-1 group-hover:text-orange-600 transition-colors">{book.title}</h3>
-                  <p className="text-sm text-stone-400 mb-2">{book.author}</p>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-lg text-stone-900">{book.price.toLocaleString()} F</span>
-                    {book.type === 'physique' && <span className="text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">En stock</span>}
+                {/* Infos livre */}
+                <div className="space-y-2">
+                  <h3 className="font-bold text-lg text-gray-900 leading-tight group-hover:text-orange-600 transition-colors line-clamp-2">
+                    {book.title}
+                  </h3>
+                  <p className="text-gray-500 font-medium">{book.author}</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl font-black text-gray-900">
+                      {book.price.toLocaleString()}
+                      <span className="text-lg font-normal text-gray-500 ml-1">F CFA</span>
+                    </span>
+                    {book.type === 'physique' && (
+                      <div className="flex items-center gap-1 bg-green-100 text-green-700 px-2 py-1 rounded-lg text-xs font-bold">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        Stock
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -186,29 +244,82 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* --- SECTION CONFIANCE (Plus aérée) --- */}
-      <section className="py-20 bg-stone-50 border-t border-stone-200">
+      {/* === STATS & CONFIANCE === */}
+      <section className="py-20 bg-gradient-to-r from-gray-900 to-gray-800 text-white">
         <div className="container mx-auto px-4">
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center divide-y md:divide-y-0 md:divide-x divide-stone-200">
-            <div className="px-4">
-              <ShieldCheck className="w-10 h-10 text-orange-600 mx-auto mb-4" />
-              <h3 className="text-lg font-bold text-stone-900 mb-2">Lecture Sécurisée</h3>
-              <p className="text-stone-500 text-sm">Protection anti-copie et filigrane dynamique pour les auteurs.</p>
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-20">
+            <div className="text-center">
+              <div className="text-4xl font-black mb-2">50K+</div>
+              <div className="text-gray-400">Livres disponibles</div>
             </div>
-            <div className="px-4">
-              <Smartphone className="w-10 h-10 text-orange-600 mx-auto mb-4" />
-              <h3 className="text-lg font-bold text-stone-900 mb-2">100% Mobile</h3>
-              <p className="text-stone-500 text-sm">Paiement via Orange Money, MTN MoMo et Cartes Visa/Mastercard.</p>
+            <div className="text-center">
+              <div className="text-4xl font-black mb-2">10K+</div>
+              <div className="text-gray-400">Lecteurs actifs</div>
             </div>
-            <div className="px-4">
-              <Zap className="w-10 h-10 text-orange-600 mx-auto mb-4" />
-              <h3 className="text-lg font-bold text-stone-900 mb-2">Livraison Rapide</h3>
-              <p className="text-stone-500 text-sm">Livraison à domicile à Yaoundé, Douala et environs.</p>
+            <div className="text-center">
+              <div className="text-4xl font-black mb-2">500+</div>
+              <div className="text-gray-400">Auteurs partenaires</div>
+            </div>
+            <div className="text-center">
+              <div className="text-4xl font-black mb-2">99%</div>
+              <div className="text-gray-400">Satisfaction client</div>
+            </div>
+          </div>
+
+          {/* Features */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="text-center p-8 rounded-3xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-all">
+              <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <ShieldCheck className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold mb-4">Lecture 100% Sécurisée</h3>
+              <p className="text-gray-400 leading-relaxed">
+                Technologie de watermarking dynamique et streaming sécurisé pour protéger les droits d auteur
+              </p>
+            </div>
+
+            <div className="text-center p-8 rounded-3xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-all">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <Smartphone className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold mb-4">Paiement Mobile</h3>
+              <p className="text-gray-400 leading-relaxed">
+                Orange Money, MTN MoMo, Visa/Mastercard. Solutions adaptées au marché camerounais
+              </p>
+            </div>
+
+            <div className="text-center p-8 rounded-3xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-all">
+              <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <Zap className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold mb-4">Livraison Express</h3>
+              <p className="text-gray-400 leading-relaxed">
+                Livraison dans toutes les grandes villes du Cameroun. Accès numérique immédiat
+              </p>
             </div>
           </div>
         </div>
       </section>
-      
+
+      {/* === CTA FINAL === */}
+      <section className="py-20 px-4 bg-gradient-to-r from-orange-500 to-pink-600 text-white">
+        <div className="container mx-auto text-center">
+          <h2 className="text-4xl md:text-6xl font-bold mb-6">
+            Prêt à révolutionner <br />votre façon de lire ?
+          </h2>
+          <p className="text-xl mb-12 opacity-90 max-w-2xl mx-auto">
+            Rejoignez des milliers de lecteurs qui ont adopté l expérience Pensezy Edition
+          </p>
+          <Link 
+            href="/register" 
+            className="inline-flex items-center gap-3 px-12 py-5 bg-white text-gray-900 rounded-2xl font-bold text-lg shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 transition-all"
+          >
+            Créer mon compte gratuit
+            <ArrowRight className="w-6 h-6" />
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }
