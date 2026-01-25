@@ -63,3 +63,25 @@ export async function createProduct(params: CreateProductParams) {
   revalidatePath("/seller/products");
   return { success: true };
 }
+
+export async function withdrawFunds(amount: number) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "Non autorisé" };
+  }
+
+  const { error } = await supabase.rpc('request_withdrawal', {
+    p_user_id: user.id,
+    p_amount: amount
+  });
+
+  if (error) {
+    console.error("Withdrawal error:", error);
+    return { error: "Erreur lors du retrait : " + error.message };
+  }
+
+  revalidatePath("/seller/wallet");
+  return { success: true };
+}
