@@ -1,98 +1,104 @@
-import Link from "next/link";
-import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
+import { PlusCircle, Book, Download, Box } from "lucide-react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 
-export default async function ProductsPage() {
+export default async function SellerProductsPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Fetch products (listings + books info)
-  const { data: listings } = await supabase
+  if (!user) {
+    redirect("/login");
+  }
+
+  // Fetch listings with book details
+  const { data: listings, error } = await supabase
     .from("listings")
     .select(`
       *,
-      books (
-        title,
-        author,
-        cover_url
-      )
+      book:books(*)
     `)
-    .eq("seller_id", user?.id || "")
+    .eq("seller_id", user.id)
     .order("created_at", { ascending: false });
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Mes Produits</h1>
-        <Link href="/seller/products/new">
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Ajouter un livre
-          </Button>
+        <Link
+          href="/seller/products/new"
+          className="inline-flex items-center px-4 py-2 bg-blue-900 text-white text-sm font-medium rounded-lg hover:bg-blue-800 transition-colors"
+        >
+          <PlusCircle className="w-4 h-4 mr-2" />
+          Ajouter un livre
         </Link>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        {listings && listings.length > 0 ? (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Titre</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prix</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {listings.map((item) => (
-                <tr key={item.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="h-10 w-10 flex-shrink-0 bg-gray-100 rounded-md">
-                        {/* Placeholder image or real image */}
-                        {item.books?.cover_url ? (
-                           <img src={item.books.cover_url} alt="" className="h-10 w-10 object-cover rounded-md" />
-                        ) : (
-                          <div className="h-full w-full flex items-center justify-center text-gray-400 font-bold">?</div>
-                        )}
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{item.books?.title}</div>
-                        <div className="text-sm text-gray-500">{item.books?.author}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${item.type === 'digital' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'}`}>
-                      {item.type === 'digital' ? 'Numérique' : 'Physique'}
+      {listings && listings.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {listings.map((listing: any) => (
+            <div
+              key={listing.id}
+              className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
+            >
+              <div className="h-48 bg-gray-100 relative">
+                {listing.book?.cover_url ? (
+                   // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={listing.book.cover_url}
+                    alt={listing.book.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-400">
+                    <Book className="w-12 h-12" />
+                  </div>
+                )}
+                <div className="absolute top-2 right-2">
+                  {listing.type === "digital" ? (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                      <Download className="w-3 h-3 mr-1" />
+                      Numérique
                     </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {item.price} FCFA
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                      En ligne
+                  ) : (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      <Box className="w-3 h-3 mr-1" />
+                      Physique
                     </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <a href="#" className="text-blue-600 hover:text-blue-900">Modifier</a>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-500 mb-4">Vous n'avez pas encore mis de livre en vente.</p>
-            <Link href="/seller/products/new">
-              <Button variant="outline">Commencer la vente</Button>
-            </Link>
-          </div>
-        )}
-      </div>
+                  )}
+                </div>
+              </div>
+              <div className="p-4">
+                <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">
+                  {listing.book?.title}
+                </h3>
+                <p className="text-sm text-gray-500 mb-4">{listing.book?.author}</p>
+
+                <div className="flex items-center justify-between mt-4">
+                  <span className="text-xl font-bold text-gray-900">
+                    {listing.price.toLocaleString()} FCFA
+                  </span>
+                  <div className="text-sm text-gray-500">
+                    {listing.type === 'physical' && `Stock: ${listing.stock}`}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
+          <Book className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+          <h3 className="text-lg font-medium text-gray-900">Aucun produit</h3>
+          <p className="text-gray-500 mb-6">Commencez par ajouter votre premier livre.</p>
+          <Link
+            href="/seller/products/new"
+            className="text-blue-600 hover:text-blue-800 font-medium"
+          >
+            Mettre en vente
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
