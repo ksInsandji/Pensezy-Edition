@@ -1,11 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { ProductCard } from "@/components/products/product-card";
 import { ProductFilters } from "@/components/products/product-filters";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import { BookOpen } from "lucide-react";
 
-export const dynamic = 'force-dynamic'; // Pour que les searchParams soient pris en compte à chaque requête
+export const dynamic = 'force-dynamic';
 
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>
+
+const PAGE_SIZE = 12;
 
 export default async function MarketplacePage(props: {
   searchParams: SearchParams
@@ -15,17 +18,20 @@ export default async function MarketplacePage(props: {
 
   const query = searchParams.q?.toString();
   const type = searchParams.type?.toString();
+  const page = Number(searchParams.page) || 1;
+  const from = (page - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
 
   // Construction de la requête
-  // Note: On utilise books!inner pour forcer la jointure et permettre le filtrage si une recherche est active
   let dbQuery = supabase
     .from("listings")
     .select(`
       *,
       book:books!inner(*)
-    `)
+    `, { count: 'exact' })
     .eq("status", "active")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(from, to);
 
   if (type === "physical") {
     dbQuery = dbQuery.eq("type", "physical");
@@ -34,11 +40,10 @@ export default async function MarketplacePage(props: {
   }
 
   if (query) {
-    // Recherche sur le titre du livre via la relation
     dbQuery = dbQuery.ilike("books.title", `%${query}%`);
   }
 
-  const { data: listings, error } = await dbQuery;
+  const { data: listings, error, count } = await dbQuery;
 
   if (error) {
     console.error("Error fetching marketplace listings:", error);
@@ -60,11 +65,15 @@ export default async function MarketplacePage(props: {
           <p className="text-gray-500 mt-2">Essayez de modifier vos critères de recherche.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {listings.map((listing: any) => (
-            <ProductCard key={listing.id} listing={listing} />
-          ))}
-        </div>
+        <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {listings.map((listing: any) => (
+                    <ProductCard key={listing.id} listing={listing} />
+                ))}
+            </div>
+
+            <PaginationControls totalCount={count || 0} pageSize={PAGE_SIZE} />
+        </>
       )}
     </div>
   );

@@ -4,14 +4,6 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, ShieldCheck, Zap, Smartphone, BookOpen } from "lucide-react";
 import Link from "next/link";
 
-// Importation des types pour éviter le "any"
-// Remplacez '@/types/supabase' par le chemin exact vers votre fichier
-import { Database } from "@/types/database.types";
-
-type ListingWithBook = Database['public']['Tables']['listings']['Row'] & {
-  book: Database['public']['Tables']['books']['Row']
-};
-
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
@@ -42,8 +34,7 @@ export default async function Home() {
                 La littérature camerounaise <br className="hidden md:block" /> physique et numérique.
             </h1>
             <p className="text-lg md:text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-                {/* Correction Apostrophe ligne 37 */}
-                Accédez à des milliers d&apos;ouvrages. Commandez vos livres papiers ou lisez instantanément nos e-books sécurisés.
+                Accédez à des milliers d'ouvrages. Commandez vos livres papiers ou lisez instantanément nos e-books sécurisés.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Link href="/marketplace">
@@ -105,8 +96,7 @@ export default async function Home() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {/* Correction Typage ligne 99 : remplacement de any par le type ListingWithBook */}
-                    {latestListings.map((listing: ListingWithBook) => (
+                    {latestListings.map((listing: any) => (
                         <ProductCard key={listing.id} listing={listing} />
                     ))}
                 </div>

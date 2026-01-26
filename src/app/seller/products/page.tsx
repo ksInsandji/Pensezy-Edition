@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PlusCircle, Book, Download, Box } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ProductActions } from "./product-actions";
 
 export default async function SellerProductsPage() {
   const supabase = await createClient();
@@ -78,8 +79,11 @@ export default async function SellerProductsPage() {
                   <span className="text-xl font-bold text-gray-900">
                     {listing.price.toLocaleString()} FCFA
                   </span>
-                  <div className="text-sm text-gray-500">
-                    {listing.type === 'physical' && `Stock: ${listing.stock}`}
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm text-gray-500 mr-2">
+                        {listing.type === 'physical' && `Stock: ${listing.stock}`}
+                    </div>
+                    <ProductActions id={listing.id} />
                   </div>
                 </div>
               </div>

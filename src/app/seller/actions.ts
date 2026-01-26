@@ -85,3 +85,73 @@ export async function withdrawFunds(amount: number) {
   revalidatePath("/seller/wallet");
   return { success: true };
 }
+
+export async function deleteProduct(listingId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return { error: "Non autorisé" };
+
+  // Check ownership automatically via RLS usually, but good to be explicit or handle error
+  const { error } = await supabase
+    .from("listings")
+    .delete()
+    .eq("id", listingId)
+    .eq("seller_id", user.id);
+
+  if (error) {
+    return { error: "Erreur lors de la suppression : " + error.message };
+  }
+
+  revalidatePath("/seller/products");
+  revalidatePath("/marketplace");
+  return { success: true };
+}
+
+export async function updateProduct(listingId: string, data: Partial<CreateProductParams>) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return { error: "Non autorisé" };
+
+  // 1. Get Listing to get Book ID
+  const { data: listing } = await supabase
+    .from("listings")
+    .select("book_id, seller_id")
+    .eq("id", listingId)
+    .single();
+
+  if (!listing || listing.seller_id !== user.id) {
+    return { error: "Produit introuvable ou accès refusé" };
+  }
+
+  // 2. Update Listing (Price, Stock)
+  const { error: listingError } = await supabase
+    .from("listings")
+    .update({
+      price: data.price,
+      stock: data.type === 'physical' ? data.stock : 0,
+    })
+    .eq("id", listingId);
+
+  if (listingError) return { error: "Erreur mise à jour offre" };
+
+  // 3. Update Book (Title, Description, Author)
+  // Note: If multiple listings share a book, this updates for everyone.
+  // In our MVP logic "1 Listing creates 1 Book", it's fine.
+  const { error: bookError } = await supabase
+    .from("books")
+    .update({
+      title: data.title,
+      author: data.author,
+      description: data.description,
+      isbn: data.isbn
+    })
+    .eq("id", listing.book_id);
+
+  if (bookError) return { error: "Erreur mise à jour livre" };
+
+  revalidatePath("/seller/products");
+  revalidatePath("/marketplace");
+  return { success: true };
+}

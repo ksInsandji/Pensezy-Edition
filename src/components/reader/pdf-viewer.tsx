@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { updateReadingProgress } from "@/app/actions/library";
+import { useDebouncedCallback } from "use-debounce";
 
 // Worker config
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -11,20 +13,31 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 interface PdfViewerProps {
   url: string;
   userEmail: string;
+  listingId: string;
+  initialPage?: number;
 }
 
-export function PdfViewer({ url, userEmail }: PdfViewerProps) {
+export function PdfViewer({ url, userEmail, listingId, initialPage = 1 }: PdfViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
-  const [pageNumber, setPageNumber] = useState<number>(1);
+  const [pageNumber, setPageNumber] = useState<number>(initialPage || 1);
   const [loading, setLoading] = useState(true);
+
+  const saveProgress = useDebouncedCallback((page: number) => {
+    updateReadingProgress(listingId, page);
+  }, 1000);
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages);
     setLoading(false);
   }
 
-  const goToPrevPage = () => setPageNumber(prev => Math.max(prev - 1, 1));
-  const goToNextPage = () => setPageNumber(prev => Math.min(prev + 1, numPages));
+  const changePage = (newPage: number) => {
+    setPageNumber(newPage);
+    saveProgress(newPage);
+  };
+
+  const goToPrevPage = () => changePage(Math.max(pageNumber - 1, 1));
+  const goToNextPage = () => changePage(Math.min(pageNumber + 1, numPages));
 
   return (
     <div

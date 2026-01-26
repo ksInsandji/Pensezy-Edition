@@ -18,7 +18,7 @@ export default async function ReadPage({ params }: Props) {
   // 1. Check Library Access
   const { data: access, error: accessError } = await supabase
     .from("library_access")
-    .select("id")
+    .select("id, last_page_read")
     .eq("user_id", user.id)
     .eq("listing_id", id)
     .single();
@@ -66,6 +66,8 @@ export default async function ReadPage({ params }: Props) {
     <PdfViewer
         url={signedUrlData.signedUrl}
         userEmail={user.email || "Utilisateur"}
+        listingId={id}
+        initialPage={access.last_page_read || 1}
     />
   );
 }
