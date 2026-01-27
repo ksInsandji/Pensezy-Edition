@@ -1,9 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { AddToCartButton } from "@/components/products/add-to-cart-button";
-import { Download, Box, Book, Info, ShieldCheck } from "lucide-react";
+import { Download, Box, Book, Info, ShieldCheck, BookOpen } from "lucide-react";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   params: Promise<{ id: string }>
@@ -29,6 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ProductDetailPage({ params }: Props) {
   const { id } = await params
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
   const { data: listing, error } = await supabase
     .from("listings")
@@ -45,6 +47,18 @@ export default async function ProductDetailPage({ params }: Props) {
   }
 
   const { book, seller } = listing;
+
+  // Check ownership if user is logged in
+  let isOwned = false;
+  if (user) {
+    const { data: ownership } = await supabase
+        .from("library_access")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("listing_id", id)
+        .single();
+    if (ownership) isOwned = true;
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -145,16 +159,25 @@ export default async function ProductDetailPage({ params }: Props) {
           </div>
 
           <div className="mt-10 pt-6 border-t border-gray-100">
-            <AddToCartButton
-                listingId={listing.id}
-                bookId={book.id}
-                title={book.title}
-                author={book.author}
-                price={listing.price}
-                type={listing.type}
-                coverUrl={book.cover_url}
-                maxStock={listing.stock}
-            />
+            {isOwned && listing.type === 'digital' ? (
+                <Link href={`/read/${listing.id}`}>
+                    <Button size="lg" className="w-full md:w-auto min-w-[200px] bg-green-600 hover:bg-green-700 gap-2">
+                        <BookOpen className="h-5 w-5" />
+                        Accéder à la lecture
+                    </Button>
+                </Link>
+            ) : (
+                <AddToCartButton
+                    listingId={listing.id}
+                    bookId={book.id}
+                    title={book.title}
+                    author={book.author}
+                    price={listing.price}
+                    type={listing.type}
+                    coverUrl={book.cover_url}
+                    maxStock={listing.stock}
+                />
+            )}
           </div>
         </div>
       </div>
