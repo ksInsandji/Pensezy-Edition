@@ -8,11 +8,13 @@ import { registerSchema, RegisterInput } from "@/lib/validations/auth";
 import { signUpAction } from "../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
 
 export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const { toast } = useToast();
 
   const form = useForm<RegisterInput>({
@@ -28,12 +30,29 @@ export default function RegisterPage() {
       toast({ variant: "destructive", title: "Erreur", description: result.error });
       setIsLoading(false);
     } else {
-      toast({ 
-        title: "Compte créé !", 
-        description: "Vérifiez vos emails pour confirmer votre compte (si activé)." 
-      });
-      // Redirection manuelle ou message de succès
+      setIsSuccess(true);
+      setIsLoading(false);
     }
+  }
+
+  if (isSuccess) {
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+            <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-lg border text-center">
+                <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <MailCheck className="w-8 h-8" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Vérifiez vos emails</h2>
+                <p className="text-gray-600 mb-6">
+                    Un lien de confirmation a été envoyé à <strong>{form.getValues("email")}</strong>.
+                    <br/>Cliquez dessus pour activer votre compte.
+                </p>
+                <Link href="/login">
+                    <Button variant="outline" className="w-full">Retour à la connexion</Button>
+                </Link>
+            </div>
+        </div>
+    )
   }
 
   return (
@@ -63,7 +82,7 @@ export default function RegisterPage() {
           {/* Mot de passe */}
           <div>
             <label className="text-sm font-medium">Mot de passe</label>
-            <Input {...form.register("password")} type="password" />
+            <PasswordInput {...form.register("password")} />
             {form.formState.errors.password && <p className="text-red-500 text-xs">{form.formState.errors.password.message}</p>}
           </div>
 

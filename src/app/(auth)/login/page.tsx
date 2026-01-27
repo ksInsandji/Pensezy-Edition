@@ -5,10 +5,11 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, LoginInput } from "@/lib/validations/auth";
-import { signInAction } from "../actions"; // On importe notre action serveur
+import { signInAction } from "../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/use-toast"; // Pour les notifications
+import { PasswordInput } from "@/components/ui/password-input";
+import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
@@ -60,7 +61,7 @@ export default function LoginPage() {
             
             <div>
               <label className="text-sm font-medium">Mot de passe</label>
-              <Input {...form.register("password")} type="password" />
+              <PasswordInput {...form.register("password")} />
               {form.formState.errors.password && (
                 <p className="text-red-500 text-xs mt-1">{form.formState.errors.password.message}</p>
               )}
