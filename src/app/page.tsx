@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowRight, ShieldCheck, Zap, Smartphone, BookOpen, Search, TrendingUp, Users, Award, Package, Headphones, CheckCircle, Star } from "lucide-react";
 import Link from "next/link";
+import "./globals.css";
 import { Database } from "@/types/database.types";
+
 
 type ListingWithBook = Database['public']['Tables']['listings']['Row'] & {
   book: Database['public']['Tables']['books']['Row'];
@@ -272,7 +274,7 @@ export default async function Home() {
 
       {/* How It Works */}
       <section className="py-24 bg-gradient-to-br from-blue-600 to-indigo-700 text-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
+        {/*<div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>*/}
         
         <div className="container-wrapper relative z-10">
           <div className="text-center max-w-3xl mx-auto mb-16">

@@ -1,42 +1,47 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { BookOpen, ShoppingCart, User as UserIcon, Menu, X } from "lucide-react";
+import { ShoppingCart, User as UserIcon, Menu, X, BookOpen, LogOut, LayoutDashboard } from "lucide-react";
 import { useCartStore } from "@/store/cart-store";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { User } from "@supabase/supabase-js";
 
 export function Navbar() {
   const [user, setUser] = useState<User | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const supabase = createClient();
   const cartCount = useCartStore((state) => state.getCount());
 
   useEffect(() => {
-    // On regroupe l'initialisation pour éviter les rendus en cascade
     const initializeNavbar = async () => {
-      // 1. Hydratation du store Zustand (système externe)
       await useCartStore.persist.rehydrate();
-      
-      // 2. Récupération de l'utilisateur actuel
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       setUser(currentUser);
-
-      // 3. Signalement du montage terminé pour l'UI
       setMounted(true);
     };
 
     initializeNavbar();
 
-    // Écoute des changements de session (login/logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
 
-    return () => subscription.unsubscribe();
+    // Handle scroll for glass effect
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+    window.addEventListener("scroll", handleScroll);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener("scroll", handleScroll);
+    };
   }, [supabase.auth]);
 
   const handleSignOut = async () => {
@@ -45,58 +50,97 @@ export function Navbar() {
   };
 
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <nav
+      className={`sticky top-0 z-50 transition-all duration-300 ${
+        isScrolled
+          ? "bg-background/80 backdrop-blur-lg border-b border-border shadow-sm"
+          : "bg-background border-b border-transparent"
+      }`}
+    >
+      <div className="container-wrapper">
         <div className="flex justify-between h-16">
           {/* Logo & Navigation Desktop */}
           <div className="flex items-center">
-            <Link href="/" className="flex-shrink-0 flex items-center gap-2">
-              <BookOpen className="h-8 w-8 text-blue-900" />
-              <span className="font-bold text-xl text-blue-900">Pensezy Edition</span>
+            <Link href="/" className="flex-shrink-0 flex items-center gap-3">
+              <Image
+                src="/Logo_Pensezy_Edition.png"
+                alt="Pensezy Edition"
+                width={40}
+                height={40}
+                className="h-10 w-auto"
+              />
+              <span className="font-bold text-xl text-foreground hidden sm:block">
+                Pensezy <span className="text-primary">Edition</span>
+              </span>
             </Link>
-            <div className="hidden md:ml-6 md:flex md:space-x-8">
-              <Link href="/marketplace" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-blue-500 text-sm font-medium">
+
+            <div className="hidden md:ml-8 md:flex md:space-x-1">
+              <Link
+                href="/marketplace"
+                className="text-foreground/70 hover:text-foreground hover:bg-primary/5 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
                 Catalogue
               </Link>
-              <Link href="/about" className="text-gray-500 hover:text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
-                À propos
+              <Link
+                href="/library"
+                className="text-foreground/70 hover:text-foreground hover:bg-primary/5 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                Ma Bibliothèque
               </Link>
             </div>
           </div>
 
           {/* Actions Desktop */}
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-2">
+            <ThemeToggle />
+
             {user ? (
               <>
                 <Link href="/seller/dashboard">
-                  <Button variant="outline" size="sm">Espace Vendeur</Button>
+                  <Button variant="ghost" size="sm" className="gap-2 text-foreground/70 hover:text-foreground">
+                    <LayoutDashboard className="h-4 w-4" />
+                    Espace Vendeur
+                  </Button>
                 </Link>
                 <Link href="/profile">
-                  <Button variant="outline" size="sm" className="gap-2">
+                  <Button variant="ghost" size="sm" className="gap-2 text-foreground/70 hover:text-foreground">
                     <UserIcon className="h-4 w-4" />
                     Mon Compte
                   </Button>
                 </Link>
-                <Button onClick={handleSignOut} variant="outline" size="sm">
-                  Déconnexion
+                <Button
+                  onClick={handleSignOut}
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-full text-foreground/70 hover:text-destructive hover:bg-destructive/10"
+                >
+                  <LogOut className="h-4 w-4" />
                 </Button>
               </>
             ) : (
               <>
                 <Link href="/login">
-                  <Button variant="outline" size="sm">Se connecter</Button>
+                  <Button variant="ghost" size="sm">
+                    Se connecter
+                  </Button>
                 </Link>
                 <Link href="/register">
-                  <Button size="sm" className="bg-blue-900">S&apos;inscrire</Button>
+                  <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                    S&apos;inscrire
+                  </Button>
                 </Link>
               </>
             )}
-            
+
             <Link href="/cart">
-              <Button variant="outline" size="sm" className="relative">
+              <Button
+                variant="outline"
+                size="icon"
+                className="relative h-9 w-9 rounded-full border-border"
+              >
                 <ShoppingCart className="h-4 w-4" />
                 {mounted && cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  <span className="absolute -top-1 -right-1 bg-accent text-accent-foreground text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full">
                     {cartCount}
                   </span>
                 )}
@@ -104,33 +148,104 @@ export function Navbar() {
             </Link>
           </div>
 
-          {/* Bouton Menu Mobile */}
-          <div className="flex items-center md:hidden">
-            <button
+          {/* Mobile Actions */}
+          <div className="flex items-center gap-2 md:hidden">
+            <ThemeToggle />
+
+            <Link href="/cart">
+              <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-full">
+                <ShoppingCart className="h-5 w-5" />
+                {mounted && cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-accent text-accent-foreground text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full">
+                    {cartCount}
+                  </span>
+                )}
+              </Button>
+            </Link>
+
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+              className="h-9 w-9 rounded-full"
             >
               <span className="sr-only">Ouvrir le menu</span>
               {isMenuOpen ? (
-                <X className="block h-6 w-6" aria-hidden="true" />
+                <X className="h-5 w-5" />
               ) : (
-                <Menu className="block h-6 w-6" aria-hidden="true" />
+                <Menu className="h-5 w-5" />
               )}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
 
       {/* Menu Mobile */}
       {isMenuOpen && (
-        <div className="md:hidden">
-          <div className="pt-2 pb-3 space-y-1">
-            <Link href="/marketplace" className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800">
-              Catalogue
+        <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-lg">
+          <div className="container-wrapper py-4 space-y-2">
+            <Link
+              href="/marketplace"
+              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted transition-colors"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              <BookOpen className="h-5 w-5 text-primary" />
+              <span className="font-medium">Catalogue</span>
             </Link>
-            <Link href="/about" className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800">
-              À propos
+            <Link
+              href="/library"
+              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted transition-colors"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              <BookOpen className="h-5 w-5 text-primary" />
+              <span className="font-medium">Ma Bibliothèque</span>
             </Link>
+
+            <div className="border-t border-border my-2" />
+
+            {user ? (
+              <>
+                <Link
+                  href="/seller/dashboard"
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted transition-colors"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <LayoutDashboard className="h-5 w-5 text-muted-foreground" />
+                  <span className="font-medium">Espace Vendeur</span>
+                </Link>
+                <Link
+                  href="/profile"
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted transition-colors"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <UserIcon className="h-5 w-5 text-muted-foreground" />
+                  <span className="font-medium">Mon Compte</span>
+                </Link>
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    handleSignOut();
+                  }}
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-destructive/10 text-destructive transition-colors w-full"
+                >
+                  <LogOut className="h-5 w-5" />
+                  <span className="font-medium">Déconnexion</span>
+                </button>
+              </>
+            ) : (
+              <div className="flex gap-2 px-4 pt-2">
+                <Link href="/login" className="flex-1" onClick={() => setIsMenuOpen(false)}>
+                  <Button variant="outline" className="w-full">
+                    Se connecter
+                  </Button>
+                </Link>
+                <Link href="/register" className="flex-1" onClick={() => setIsMenuOpen(false)}>
+                  <Button className="w-full bg-primary hover:bg-primary/90">
+                    S&apos;inscrire
+                  </Button>
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       )}
