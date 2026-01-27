@@ -2,54 +2,56 @@
 
 Plateforme de vente de livres numériques et physiques (E-commerce Hybride).
 
-## Pré-requis
+## 📘 Documentation
 
+Voir le **[Cahier des Charges Technique & Bilan (SPECIFICATIONS.md)](./SPECIFICATIONS.md)** pour une vision détaillée de l'architecture finale.
+
+## 🚀 Démarrage Rapide
+
+### 1. Pré-requis
 - Node.js 18+
 - Un projet Supabase
 
-## Installation
+### 2. Installation
 
-1.  **Installer les dépendances :**
+```bash
+npm install
+```
 
-    ```bash
-    npm install
-    ```
+### 3. Configuration
 
-2.  **Configurer l'environnement :**
+```bash
+cp .env.example .env.local
+# Remplir NEXT_PUBLIC_SUPABASE_URL et NEXT_PUBLIC_SUPABASE_ANON_KEY
+```
 
-    Dupliquez le fichier `.env.example` et renommez-le en `.env.local` :
+### 4. Base de Données
 
-    ```bash
-    cp .env.example .env.local
-    ```
+Exécuter les scripts de migration dans le dossier `migrations/` dans l'ordre chronologique (voir SPECIFICATIONS.md pour la liste exacte).
 
-    Ouvrez `.env.local` et remplissez les variables avec vos clés Supabase (disponibles dans *Project Settings > API*) :
+### 5. Lancer
 
-    ```env
-    NEXT_PUBLIC_SUPABASE_URL=https://votre-projet.supabase.co
-    NEXT_PUBLIC_SUPABASE_ANON_KEY=votre-cle-publique-anon
-    ```
+```bash
+npm run dev
+```
 
-3.  **Lancer le serveur de développement :**
+---
 
-    ```bash
-    npm run dev
-    ```
+## 🏗 État d'avancement (Terminé)
 
-    Ouvrez [http://localhost:3000](http://localhost:3000) dans votre navigateur.
+| Module | Statut | Description |
+| :--- | :---: | :--- |
+| **Authentification** | ✅ | Login, Register, Protection des routes |
+| **Base de Données** | ✅ | Schéma complet, RPCs financières, RLS |
+| **Dashboard Vendeur** | ✅ | Produits, Upload, Wallet, Retraits |
+| **Catalogue Acheteur** | ✅ | Recherche, Filtres, Panier, Commande |
+| **Liseuse Sécurisée** | ✅ | Streaming PDF, Watermarking, Protection |
+| **Administration** | ✅ | Modération des livres, Validation paiements |
+| **Profil & Accueil** | ✅ | Historique commandes, Landing Page moderne |
 
-## Architecture
+## 🛠 Stack Technique
 
-- **Frontend** : Next.js 14 (App Router), Tailwind CSS, Shadcn/UI
-- **Backend/Database** : Supabase (Auth, PostgreSQL, Storage)
-- **Authentification** : `@supabase/ssr`
-
-## Structure du projet
-
-- `src/app` : Pages et Routes (App Router)
-  - `(public)` : Pages accessibles à tous (Accueil, Catalogue)
-  - `(auth)` : Pages d'authentification (Login, Register)
-  - `seller` : Espace Vendeur protégé
-- `src/components` : Composants réutilisables (UI, Layout)
-- `src/lib` : Utilitaires (Supabase client, validation Zod)
-- `migrations` : Schéma SQL de la base de données
+- **Frontend** : Next.js 16, Tailwind CSS, Lucide Icons.
+- **Backend** : Supabase (Auth, DB, Storage, Edge Functions via RPC).
+- **State** : Zustand (Panier).
+- **Validation** : Zod.
