@@ -24,10 +24,17 @@ export default function RegisterPage() {
 
   async function onSubmit(data: RegisterInput) {
     setIsLoading(true);
+    setErrorMessage(""); // Reset error
     const result = await signUpAction(data);
 
     if (result?.error) {
-      toast({ variant: "destructive", title: "Erreur", description: result.error });
+      let msg = result.error;
+      if (msg.toLowerCase().includes("rate limit")) {
+        msg = "Trop de tentatives. Veuillez attendre quelques minutes avant de réessayer.";
+      }
+
+      setErrorMessage(msg);
+      toast({ variant: "destructive", title: "Erreur d'inscription", description: msg });
       setIsLoading(false);
     } else {
       setIsSuccess(true);
@@ -62,6 +69,13 @@ export default function RegisterPage() {
           <h2 className="text-3xl font-bold text-slate-900">Créer un compte</h2>
           <p className="mt-2 text-sm text-slate-600">Rejoignez Pensezy Edition</p>
         </div>
+
+        {errorMessage && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md flex items-center gap-3 text-sm animate-in fade-in slide-in-from-top-2">
+                <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                <p>{errorMessage}</p>
+            </div>
+        )}
 
         <form className="mt-8 space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
           
