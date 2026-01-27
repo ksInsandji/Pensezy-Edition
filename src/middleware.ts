@@ -1,12 +1,12 @@
-import { createServerClient } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
-  })
+  });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,30 +14,69 @@ export async function middleware(request: NextRequest) {
     {
       cookies: {
         getAll() {
-          return request.cookies.getAll()
+          return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => {
+            request.cookies.set(name, value);
+          });
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          });
           cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value)
-            response.cookies.set(name, value, options)
-          })
+            response.cookies.set(name, value, options);
+          });
         },
       },
     }
-  )
+  );
 
+  // Rafraîchir la session (important pour les tokens expirés)
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await supabase.auth.getUser();
 
-  // 1. Protection basique : Rediriger vers login si pas connecté
-  if (!user && (request.nextUrl.pathname.startsWith('/dashboard') || request.nextUrl.pathname.startsWith('/seller'))) {
-    return NextResponse.redirect(new URL('/login', request.url))
+  // Routes protégées : rediriger vers login si pas connecté
+  const protectedPaths = ["/dashboard", "/seller", "/admin", "/library", "/read", "/profile"];
+  const isProtectedPath = protectedPaths.some((path) =>
+    request.nextUrl.pathname.startsWith(path)
+  );
+
+  if (!user && isProtectedPath) {
+    const redirectUrl = new URL("/login", request.url);
+    redirectUrl.searchParams.set("next", request.nextUrl.pathname);
+    return NextResponse.redirect(redirectUrl);
   }
 
-  return response
+  // Si l'utilisateur est connecté et essaie d'accéder à login/register, rediriger
+  const authPaths = ["/login", "/register"];
+  const isAuthPath = authPaths.some((path) =>
+    request.nextUrl.pathname.startsWith(path)
+  );
+
+  if (user && isAuthPath) {
+    // Rediriger vers la page appropriée selon le rôle
+    return NextResponse.redirect(new URL("/marketplace", request.url));
+  }
+
+  return response;
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/seller/:path*', '/admin/:path*'],
-}
+  matcher: [
+    // Routes protégées
+    "/dashboard/:path*",
+    "/seller/:path*",
+    "/admin/:path*",
+    "/library/:path*",
+    "/read/:path*",
+    "/profile/:path*",
+    // Routes auth (pour redirection si déjà connecté)
+    "/login",
+    "/register",
+    // API auth callback
+    "/api/auth/:path*",
+  ],
+};
