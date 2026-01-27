@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Download, Box, Book, ShoppingCart } from "lucide-react";
+import Image from "next/image"; // Importation du composant optimisé
+import { Download, Box, Book } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ProductCardProps {
@@ -7,7 +8,7 @@ interface ProductCardProps {
     id: string;
     price: number;
     type: "physical" | "digital";
-    stock: number;
+    stock: number | null;
     book: {
       id: string;
       title: string;
@@ -25,11 +26,13 @@ export function ProductCard({ listing }: ProductCardProps) {
       {/* Image Container */}
       <Link href={`/marketplace/${listing.id}`} className="block h-64 bg-gray-100 relative overflow-hidden">
         {book.cover_url ? (
-           // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={book.cover_url}
-            alt={book.title}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            alt={`Couverture de ${book.title}`}
+            fill // Remplit le conteneur parent
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            priority={false} // Lazy loading par défaut
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400 bg-gray-50">
@@ -38,7 +41,7 @@ export function ProductCard({ listing }: ProductCardProps) {
         )}
 
         {/* Badges */}
-        <div className="absolute top-3 right-3 flex flex-col gap-2">
+        <div className="absolute top-3 right-3 flex flex-col gap-2 z-10">
             {listing.type === "digital" ? (
                 <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 shadow-sm">
                   <Download className="w-3 h-3 mr-1" />
@@ -53,7 +56,7 @@ export function ProductCard({ listing }: ProductCardProps) {
         </div>
       </Link>
 
-      {/* Content */}
+      {/* Reste du contenu (inchangé) */}
       <div className="p-4">
         <Link href={`/marketplace/${listing.id}`}>
             <h3 className="text-lg font-bold text-gray-900 line-clamp-1 mb-1 group-hover:text-blue-900 transition-colors">
@@ -61,7 +64,7 @@ export function ProductCard({ listing }: ProductCardProps) {
             </h3>
         </Link>
         <p className="text-sm text-gray-500 mb-3">{book.author}</p>
-
+        
         <div className="flex items-end justify-between mt-4">
           <div>
             <span className="block text-xs text-gray-400 mb-0.5">Prix</span>
@@ -69,7 +72,6 @@ export function ProductCard({ listing }: ProductCardProps) {
                 {listing.price.toLocaleString()} <span className="text-sm font-normal text-gray-500">FCFA</span>
             </span>
           </div>
-
           <Link href={`/marketplace/${listing.id}`}>
             <Button size="sm" variant="outline" className="border-blue-200 hover:bg-blue-50 text-blue-900">
                 Voir
