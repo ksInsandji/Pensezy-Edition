@@ -10,12 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, MailCheck, AlertCircle } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
   const { toast } = useToast();
 
   const form = useForm<RegisterInput>({

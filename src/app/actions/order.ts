@@ -15,6 +15,60 @@ type CreateOrderParams = {
   paymentMethod: string;
 };
 
+/**
+ * Create an order with PENDING status (for real payment flow)
+ * The order items are created but library access / stock / seller credit
+ * will only be processed after payment confirmation via webhook
+ */
+export async function createOrderPending(params: CreateOrderParams) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "Vous devez être connecté pour commander." };
+  }
+
+  // 1. Create Order with PENDING status
+  const { data: order, error: orderError } = await supabase
+    .from("orders")
+    .insert({
+      buyer_id: user.id,
+      total_amount: params.totalAmount,
+      status: "pending", // Will be updated to "paid" by webhook
+      payment_method: params.paymentMethod,
+    })
+    .select()
+    .single();
+
+  if (orderError) {
+    console.error("Order creation failed:", orderError);
+    return { error: "Erreur lors de la création de la commande." };
+  }
+
+  // 2. Create Order Items (but don't process them yet - wait for payment)
+  for (const item of params.items) {
+    const { error: itemError } = await supabase
+      .from("order_items")
+      .insert({
+        order_id: order.id,
+        listing_id: item.listingId,
+        quantity: item.quantity,
+        price_at_purchase: item.price
+      });
+
+    if (itemError) {
+      console.error("Item creation failed:", itemError);
+    }
+  }
+
+  return { success: true, orderId: order.id };
+}
+
+/**
+ * Legacy function: Create order and immediately mark as paid
+ * Used for testing or mock payment scenarios
+ * @deprecated Use createOrderPending + real payment flow instead
+ */
 export async function createOrder(params: CreateOrderParams) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -30,7 +84,7 @@ export async function createOrder(params: CreateOrderParams) {
       buyer_id: user.id,
       total_amount: params.totalAmount,
       status: "paid", // MVP: Auto-paid mock
-      // payment_method: params.paymentMethod -- If we had a column
+      payment_method: params.paymentMethod,
     })
     .select()
     .single();
