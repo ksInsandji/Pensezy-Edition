@@ -9,6 +9,7 @@ import { signUpAction } from "../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
+import { Loader2 } from "lucide-react";
 
 export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -85,6 +86,7 @@ export default function RegisterPage() {
           </div>
 
           <Button type="submit" className="w-full bg-blue-900 mt-4" disabled={isLoading}>
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             S'inscrire
           </Button>
         </form>
