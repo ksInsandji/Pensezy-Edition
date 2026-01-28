@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,8 +14,10 @@ import {
   Zap,
   ArrowRight,
   Star,
+  PenTool,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { User } from "@supabase/supabase-js";
 
 // Animation variants
 const fadeInUp = {
@@ -100,14 +104,45 @@ const TESTIMONIALS = [
   },
   {
     id: 2,
-    name: "Marc T.",
-    role: "Auteur indépendant",
-    text: "Enfin une plateforme qui protège mes œuvres contre le piratage tout en me payant rapidement via Mobile Money.",
-    avatar: "M",
+    name: "Jean-Pierre K.",
+    role: "Lecteur passionné, Douala",
+    text: "J'ai enfin accès à des livres africains de qualité avec un paiement simple via Mobile Money. Génial !",
+    avatar: "J",
   },
 ];
 
 export default function HomePage() {
+  const [user, setUser] = useState<User | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const supabase = createClient();
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      setUser(currentUser);
+
+      if (currentUser) {
+        const role = currentUser.user_metadata?.role;
+        setUserRole(role || "user");
+      }
+    };
+    checkUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        setUserRole(session.user.user_metadata?.role || "user");
+      } else {
+        setUserRole(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase]);
+
+  const isSeller = userRole === "seller" || userRole === "admin";
+  const isLoggedIn = !!user;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
@@ -337,7 +372,7 @@ export default function HomePage() {
         <div className="container-wrapper">
           <div className="text-center mb-12">
             <h2 className="heading-2 text-foreground mb-4">
-              Ce que disent nos utilisateurs
+              Ce que disent nos lecteurs
             </h2>
           </div>
 
@@ -373,7 +408,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* CTA Section - For Readers */}
       <section className="section-padding bg-gradient-to-r from-primary to-blue-700 text-white">
         <div className="container-wrapper text-center">
           <motion.div
@@ -381,30 +416,82 @@ export default function HomePage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="heading-2 mb-4">Prêt à commencer ?</h2>
+            <h2 className="heading-2 mb-4">Prêt à découvrir de nouveaux livres ?</h2>
             <p className="text-white/80 max-w-xl mx-auto mb-8">
               Rejoignez des milliers de lecteurs et accédez à la plus grande bibliothèque
               numérique africaine.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/register">
-                <Button size="lg" className="bg-white text-primary hover:bg-white/90 px-8">
-                  Créer un compte gratuit
-                </Button>
-              </Link>
-              <Link href="/marketplace">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-white/30 text-white hover:bg-white/10 px-8"
-                >
-                  Explorer le catalogue
-                </Button>
-              </Link>
+              {!isLoggedIn ? (
+                <>
+                  <Link href="/register">
+                    <Button size="lg" className="bg-white text-primary hover:bg-white/90 px-8">
+                      Créer un compte gratuit
+                    </Button>
+                  </Link>
+                  <Link href="/marketplace">
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="border-white/30 text-white hover:bg-white/10 px-8"
+                    >
+                      Explorer le catalogue
+                    </Button>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link href="/marketplace">
+                    <Button size="lg" className="bg-white text-primary hover:bg-white/90 px-8">
+                      Explorer le catalogue
+                    </Button>
+                  </Link>
+                  <Link href="/library">
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="border-white/30 text-white hover:bg-white/10 px-8"
+                    >
+                      Ma Bibliothèque
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </motion.div>
         </div>
       </section>
+
+      {/* Subtle section for becoming a seller - Only for non-sellers */}
+      {!isSeller && (
+        <section className="py-12 border-t border-border">
+          <div className="container-wrapper">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 bg-muted/30 rounded-2xl"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
+                  <PenTool className="w-6 h-6 text-accent" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-foreground">Vous êtes auteur ?</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Publiez vos œuvres et touchez des milliers de lecteurs africains.
+                  </p>
+                </div>
+              </div>
+              <Link href="/register?role=seller">
+                <Button variant="outline" className="whitespace-nowrap">
+                  Devenir vendeur
+                </Button>
+              </Link>
+            </motion.div>
+          </div>
+        </section>
+      )}
 
       {/* Footer */}
       <footer className="border-t border-border py-12">

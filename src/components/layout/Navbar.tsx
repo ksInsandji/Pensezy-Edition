@@ -6,15 +6,26 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, User as UserIcon, Menu, X, BookOpen, LogOut, LayoutDashboard } from "lucide-react";
+import {
+  ShoppingCart,
+  User as UserIcon,
+  Menu,
+  X,
+  BookOpen,
+  LogOut,
+  LayoutDashboard,
+  Library,
+} from "lucide-react";
 import { useCartStore } from "@/store/cart-store";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { User } from "@supabase/supabase-js";
-import { ModeToggle } from "@/components/ui/mode-toggle";
+
+type UserRole = "user" | "seller" | "admin" | "moderator";
 
 export function Navbar() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -24,16 +35,59 @@ export function Navbar() {
   useEffect(() => {
     const initializeNavbar = async () => {
       await useCartStore.persist.rehydrate();
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
       setUser(currentUser);
+
+      // Récupérer le rôle de l'utilisateur
+      if (currentUser) {
+        // D'abord vérifier les métadonnées utilisateur (définies à l'inscription)
+        const metadataRole = currentUser.user_metadata?.role as UserRole | undefined;
+
+        if (metadataRole) {
+          setUserRole(metadataRole);
+        } else {
+          // Sinon, chercher dans la table profiles
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("role")
+            .eq("id", currentUser.id)
+            .single();
+
+          setUserRole((profile?.role as UserRole) || "user");
+        }
+      }
+
       setMounted(true);
     };
 
     initializeNavbar();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null);
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+
+      if (session?.user) {
+        // Récupérer le rôle quand l'état change
+        const metadataRole = session.user.user_metadata?.role as UserRole | undefined;
+        if (metadataRole) {
+          setUserRole(metadataRole);
+        } else {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("role")
+            .eq("id", session.user.id)
+            .single();
+          setUserRole((profile?.role as UserRole) || "user");
+        }
+      } else {
+        setUserRole(null);
+      }
+
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
         router.refresh();
       }
     });
@@ -48,12 +102,19 @@ export function Navbar() {
       subscription.unsubscribe();
       window.removeEventListener("scroll", handleScroll);
     };
-  }, [supabase.auth]);
+  }, [supabase, router]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    window.location.reload();
+    setUser(null);
+    setUserRole(null);
+    router.push("/");
+    router.refresh();
   };
+
+  // Déterminer si l'utilisateur peut accéder à l'espace vendeur
+  const canAccessSeller = userRole === "seller" || userRole === "admin";
+  const canAccessAdmin = userRole === "admin";
 
   return (
     <nav
@@ -86,12 +147,14 @@ export function Navbar() {
               >
                 Catalogue
               </Link>
-              <Link
-                href="/library"
-                className="text-foreground/70 hover:text-foreground hover:bg-primary/5 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-              >
-                Ma Bibliothèque
-              </Link>
+              {user && (
+                <Link
+                  href="/library"
+                  className="text-foreground/70 hover:text-foreground hover:bg-primary/5 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                >
+                  Ma Bibliothèque
+                </Link>
+              )}
             </div>
           </div>
 
@@ -101,23 +164,50 @@ export function Navbar() {
 
             {user ? (
               <>
-                <Link href="/seller/dashboard">
-                  <Button variant="ghost" size="sm" className="gap-2 text-foreground/70 hover:text-foreground">
-                    <LayoutDashboard className="h-4 w-4" />
-                    Espace Vendeur
-                  </Button>
-                </Link>
+                {/* Menu Vendeur - seulement pour les vendeurs */}
+                {canAccessSeller && (
+                  <Link href="/seller/dashboard">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="gap-2 text-foreground/70 hover:text-foreground"
+                    >
+                      <LayoutDashboard className="h-4 w-4" />
+                      Espace Vendeur
+                    </Button>
+                  </Link>
+                )}
+
+                {/* Menu Admin - seulement pour les admins */}
+                {canAccessAdmin && (
+                  <Link href="/admin">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="gap-2 text-accent hover:text-accent"
+                    >
+                      Admin
+                    </Button>
+                  </Link>
+                )}
+
                 <Link href="/profile">
-                  <Button variant="ghost" size="sm" className="gap-2 text-foreground/70 hover:text-foreground">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-2 text-foreground/70 hover:text-foreground"
+                  >
                     <UserIcon className="h-4 w-4" />
                     Mon Compte
                   </Button>
                 </Link>
+
                 <Button
                   onClick={handleSignOut}
                   variant="ghost"
                   size="icon"
                   className="h-9 w-9 rounded-full text-foreground/70 hover:text-destructive hover:bg-destructive/10"
+                  title="Déconnexion"
                 >
                   <LogOut className="h-4 w-4" />
                 </Button>
@@ -130,7 +220,10 @@ export function Navbar() {
                   </Button>
                 </Link>
                 <Link href="/register">
-                  <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                  <Button
+                    size="sm"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                  >
                     S&apos;inscrire
                   </Button>
                 </Link>
@@ -175,16 +268,13 @@ export function Navbar() {
               className="h-9 w-9 rounded-full"
             >
               <span className="sr-only">Ouvrir le menu</span>
-              {isMenuOpen ? (
-                <X className="h-5 w-5" />
-              ) : (
-                <Menu className="h-5 w-5" />
-              )}
+              {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
           </div>
         </div>
       </div>
 
+      {/* Menu Mobile */}
       {isMenuOpen && (
         <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-lg">
           <div className="container-wrapper py-4 space-y-2">
@@ -196,27 +286,46 @@ export function Navbar() {
               <BookOpen className="h-5 w-5 text-primary" />
               <span className="font-medium">Catalogue</span>
             </Link>
-            <Link
-              href="/library"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted transition-colors"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <BookOpen className="h-5 w-5 text-primary" />
-              <span className="font-medium">Ma Bibliothèque</span>
-            </Link>
+
+            {user && (
+              <Link
+                href="/library"
+                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <Library className="h-5 w-5 text-primary" />
+                <span className="font-medium">Ma Bibliothèque</span>
+              </Link>
+            )}
 
             <div className="border-t border-border my-2" />
 
             {user ? (
               <>
-                <Link
-                  href="/seller/dashboard"
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <LayoutDashboard className="h-5 w-5 text-muted-foreground" />
-                  <span className="font-medium">Espace Vendeur</span>
-                </Link>
+                {/* Menu Vendeur Mobile - seulement pour les vendeurs */}
+                {canAccessSeller && (
+                  <Link
+                    href="/seller/dashboard"
+                    className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <LayoutDashboard className="h-5 w-5 text-muted-foreground" />
+                    <span className="font-medium">Espace Vendeur</span>
+                  </Link>
+                )}
+
+                {/* Menu Admin Mobile */}
+                {canAccessAdmin && (
+                  <Link
+                    href="/admin"
+                    className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-accent/10 transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <LayoutDashboard className="h-5 w-5 text-accent" />
+                    <span className="font-medium text-accent">Administration</span>
+                  </Link>
+                )}
+
                 <Link
                   href="/profile"
                   className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted transition-colors"
@@ -225,6 +334,7 @@ export function Navbar() {
                   <UserIcon className="h-5 w-5 text-muted-foreground" />
                   <span className="font-medium">Mon Compte</span>
                 </Link>
+
                 <button
                   onClick={() => {
                     setIsMenuOpen(false);

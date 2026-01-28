@@ -1,13 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { createProduct } from "../../actions";
-import { productSchema, ProductFormValues, ProductType } from "@/lib/schemas";
+import { getProductForEdit, updateProduct } from "../../../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -21,51 +19,109 @@ import {
   Package,
   Sparkles,
   AlertCircle,
-  CheckCircle,
   ArrowLeft,
   Info,
+  Save,
 } from "lucide-react";
 
-export default function NewProductPage() {
+interface EditFormValues {
+  title: string;
+  author: string;
+  isbn: string;
+  description: string;
+  category: string;
+  digitalPrice: number | null;
+  physicalPrice: number | null;
+  stock: number;
+  allowDownload: boolean;
+  discountPercent: number;
+}
+
+export default function EditProductPage() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+  const params = useParams();
+  const bookId = params.id as string;
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
   const [error, setError] = useState("");
+  const [productData, setProductData] = useState<{
+    productType: "digital" | "physical" | "hybrid";
+    hasDigital: boolean;
+    hasPhysical: boolean;
+    coverUrl: string | null;
+    filePath: string | null;
+  } | null>(null);
+
   const supabase = createClient();
 
-  const form = useForm<ProductFormValues>({
-    resolver: zodResolver(productSchema),
+  const form = useForm<EditFormValues>({
     defaultValues: {
       title: "",
       author: "",
       isbn: "",
       description: "",
       category: "",
-      productType: "hybrid",
       digitalPrice: null,
       physicalPrice: null,
       stock: 0,
       allowDownload: false,
       discountPercent: 0,
-      coverUrl: null,
-      filePath: null,
     },
   });
 
-  const productType = form.watch("productType");
-  const showDigitalFields = productType === "digital" || productType === "hybrid";
-  const showPhysicalFields = productType === "physical" || productType === "hybrid";
+  // Charger les données du produit
+  useEffect(() => {
+    async function loadProduct() {
+      setIsLoading(true);
+      const result = await getProductForEdit(bookId);
 
-  const onSubmit = async (data: ProductFormValues) => {
-    setIsLoading(true);
+      if (result.error) {
+        setError(result.error);
+        setIsLoading(false);
+        return;
+      }
+
+      if (result.data) {
+        const data = result.data;
+        setProductData({
+          productType: data.productType,
+          hasDigital: data.hasDigital,
+          hasPhysical: data.hasPhysical,
+          coverUrl: data.coverUrl,
+          filePath: data.filePath,
+        });
+
+        form.reset({
+          title: data.title || "",
+          author: data.author || "",
+          isbn: data.isbn || "",
+          description: data.description || "",
+          category: data.category || "",
+          digitalPrice: data.digitalPrice,
+          physicalPrice: data.physicalPrice,
+          stock: data.stock || 0,
+          allowDownload: data.allowDownload || false,
+          discountPercent: 0,
+        });
+      }
+
+      setIsLoading(false);
+    }
+
+    loadProduct();
+  }, [bookId, form]);
+
+  const onSubmit = async (data: EditFormValues) => {
+    setIsSaving(true);
     setError("");
     setUploadProgress("Préparation...");
 
     try {
-      let coverUrl: string | null = null;
-      let filePath: string | null = null;
+      let newCoverUrl: string | null | undefined = undefined;
 
-      // 1. Upload Cover Image (Public Bucket)
+      // Upload nouvelle couverture si fournie
       const coverInput = document.getElementById("coverImage") as HTMLInputElement;
       const coverFile = coverInput?.files?.[0];
 
@@ -81,38 +137,23 @@ export default function NewProductPage() {
         if (uploadError) throw new Error("Erreur upload couverture: " + uploadError.message);
 
         const { data: publicUrlData } = supabase.storage.from("covers").getPublicUrl(fileName);
-        coverUrl = publicUrlData.publicUrl;
+        newCoverUrl = publicUrlData.publicUrl;
       }
 
-      // 2. Upload Book PDF (Private Bucket) if digital
-      if (showDigitalFields) {
-        const bookInput = document.getElementById("bookFile") as HTMLInputElement;
-        const bookFile = bookInput?.files?.[0];
-
-        if (!bookFile) {
-          setError("Le fichier PDF est requis pour un produit numérique");
-          setIsLoading(false);
-          return;
-        }
-
-        setUploadProgress("Envoi du fichier PDF...");
-        const fileExt = bookFile.name.split(".").pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("book_files")
-          .upload(fileName, bookFile);
-
-        if (uploadError) throw new Error("Erreur upload PDF: " + uploadError.message);
-        filePath = fileName;
-      }
-
-      // 3. Enregistrer en base via Server Action
+      // Enregistrer les modifications
       setUploadProgress("Enregistrement...");
-      const result = await createProduct({
-        ...data,
-        coverUrl,
-        filePath,
+      const result = await updateProduct(bookId, {
+        title: data.title,
+        author: data.author,
+        description: data.description,
+        isbn: data.isbn,
+        category: data.category,
+        digitalPrice: data.digitalPrice,
+        physicalPrice: data.physicalPrice,
+        stock: data.stock,
+        allowDownload: data.allowDownload,
+        discountPercent: data.discountPercent,
+        coverUrl: newCoverUrl,
       });
 
       if (result.error) {
@@ -122,13 +163,46 @@ export default function NewProductPage() {
       router.push("/seller/products");
       router.refresh();
     } catch (err) {
-      console.error("Error creating product:", err);
-      setError(err instanceof Error ? err.message : "Erreur lors de la création");
+      console.error("Error updating product:", err);
+      setError(err instanceof Error ? err.message : "Erreur lors de la mise à jour");
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
       setUploadProgress("");
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background py-8">
+        <div className="container-wrapper max-w-4xl">
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <span className="ml-3 text-muted-foreground">Chargement du produit...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !productData) {
+    return (
+      <div className="min-h-screen bg-background py-8">
+        <div className="container-wrapper max-w-4xl">
+          <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-6 text-center">
+            <AlertCircle className="w-12 h-12 mx-auto text-destructive mb-4" />
+            <h2 className="text-lg font-semibold text-foreground mb-2">Erreur</h2>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <Link href="/seller/products">
+              <Button variant="outline">Retour aux produits</Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const showDigitalFields = productData?.hasDigital;
+  const showPhysicalFields = productData?.hasPhysical;
 
   return (
     <div className="min-h-screen bg-background py-8">
@@ -142,22 +216,30 @@ export default function NewProductPage() {
             <ArrowLeft className="w-4 h-4" />
             Retour aux produits
           </Link>
-          <h1 className="text-3xl font-bold text-foreground">Ajouter un nouveau livre</h1>
+          <h1 className="text-3xl font-bold text-foreground">Modifier le produit</h1>
           <p className="text-muted-foreground mt-2">
-            Pensezy Edition vous permet de vendre vos livres en version numérique, physique, ou les deux !
+            Modifiez les informations de votre livre.
           </p>
         </div>
 
-        {/* Info Banner */}
-        <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-8 flex items-start gap-3">
-          <Sparkles className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="font-medium text-foreground">Plateforme Hybride</p>
-            <p className="text-sm text-muted-foreground">
-              Maximisez vos ventes en proposant votre livre sous plusieurs formats.
-              Les acheteurs peuvent choisir entre lecture streaming, téléchargement, ou livraison physique.
-            </p>
-          </div>
+        {/* Type badge */}
+        <div className="mb-6">
+          {productData?.productType === "hybrid" ? (
+            <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold bg-accent/10 text-accent">
+              <Sparkles className="w-4 h-4 mr-1.5" />
+              Produit Hybride (Numérique + Physique)
+            </span>
+          ) : productData?.hasDigital ? (
+            <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold bg-primary/10 text-primary">
+              <Smartphone className="w-4 h-4 mr-1.5" />
+              Produit Numérique
+            </span>
+          ) : (
+            <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold bg-accent/10 text-accent">
+              <Package className="w-4 h-4 mr-1.5" />
+              Produit Physique
+            </span>
+          )}
         </div>
 
         {/* Error Message */}
@@ -180,25 +262,17 @@ export default function NewProductPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Titre du livre *</label>
                 <Input
-                  {...form.register("title")}
+                  {...form.register("title", { required: true })}
                   placeholder="Ex: L'Enfant Noir"
-                  className={form.formState.errors.title ? "border-destructive" : ""}
                 />
-                {form.formState.errors.title && (
-                  <p className="text-destructive text-xs">{form.formState.errors.title.message}</p>
-                )}
               </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Auteur *</label>
                 <Input
-                  {...form.register("author")}
+                  {...form.register("author", { required: true })}
                   placeholder="Camara Laye"
-                  className={form.formState.errors.author ? "border-destructive" : ""}
                 />
-                {form.formState.errors.author && (
-                  <p className="text-destructive text-xs">{form.formState.errors.author.message}</p>
-                )}
               </div>
             </div>
 
@@ -238,89 +312,7 @@ export default function NewProductPage() {
             </div>
           </Card>
 
-          {/* Section 2: Type de produit */}
-          <Card className="p-6">
-            <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-              <Package className="w-5 h-5 text-primary" />
-              Format de vente
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Option Hybride */}
-              <label
-                className={`border-2 rounded-xl p-4 cursor-pointer transition-all ${
-                  productType === "hybrid"
-                    ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                    : "border-border hover:border-primary/50"
-                }`}
-              >
-                <input
-                  type="radio"
-                  value="hybrid"
-                  {...form.register("productType")}
-                  className="sr-only"
-                />
-                <div className="flex items-center gap-2 mb-2">
-                  <Sparkles className="w-5 h-5 text-accent" />
-                  <span className="font-semibold text-foreground">Hybride</span>
-                  <span className="text-xs bg-accent/10 text-accent px-2 py-0.5 rounded-full">
-                    Recommandé
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Proposez les deux versions pour maximiser vos ventes
-                </p>
-              </label>
-
-              {/* Option Numérique */}
-              <label
-                className={`border-2 rounded-xl p-4 cursor-pointer transition-all ${
-                  productType === "digital"
-                    ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                    : "border-border hover:border-primary/50"
-                }`}
-              >
-                <input
-                  type="radio"
-                  value="digital"
-                  {...form.register("productType")}
-                  className="sr-only"
-                />
-                <div className="flex items-center gap-2 mb-2">
-                  <Smartphone className="w-5 h-5 text-primary" />
-                  <span className="font-semibold text-foreground">Numérique</span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  E-book accessible en streaming
-                </p>
-              </label>
-
-              {/* Option Physique */}
-              <label
-                className={`border-2 rounded-xl p-4 cursor-pointer transition-all ${
-                  productType === "physical"
-                    ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                    : "border-border hover:border-primary/50"
-                }`}
-              >
-                <input
-                  type="radio"
-                  value="physical"
-                  {...form.register("productType")}
-                  className="sr-only"
-                />
-                <div className="flex items-center gap-2 mb-2">
-                  <Package className="w-5 h-5 text-primary" />
-                  <span className="font-semibold text-foreground">Physique</span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Livre imprimé livré à domicile
-                </p>
-              </label>
-            </div>
-          </Card>
-
-          {/* Section 3: Version Numérique */}
+          {/* Section 2: Version Numérique */}
           {showDigitalFields && (
             <Card className="p-6 border-primary/20">
               <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
@@ -337,11 +329,6 @@ export default function NewProductPage() {
                     placeholder="3000"
                     min="0"
                   />
-                  {form.formState.errors.digitalPrice && (
-                    <p className="text-destructive text-xs">
-                      {form.formState.errors.digitalPrice.message}
-                    </p>
-                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -367,26 +354,19 @@ export default function NewProductPage() {
                 </div>
               </div>
 
-              {/* Upload PDF */}
-              <div className="mt-4 p-4 bg-primary/5 rounded-xl border border-primary/20">
-                <div className="flex items-center gap-2 mb-3">
-                  <FileText className="w-5 h-5 text-primary" />
-                  <span className="font-medium text-foreground">Fichier PDF du livre *</span>
+              {/* Info fichier existant */}
+              {productData?.filePath && (
+                <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-green-600" />
+                  <span className="text-sm text-foreground">
+                    Fichier PDF déjà uploadé
+                  </span>
                 </div>
-                <Input
-                  id="bookFile"
-                  type="file"
-                  accept=".pdf"
-                  className="cursor-pointer bg-background"
-                />
-                <p className="text-xs text-muted-foreground mt-2">
-                  Le fichier sera chiffré et protégé par un filigrane personnalisé pour chaque acheteur.
-                </p>
-              </div>
+              )}
             </Card>
           )}
 
-          {/* Section 4: Version Physique */}
+          {/* Section 3: Version Physique */}
           {showPhysicalFields && (
             <Card className="p-6 border-accent/20">
               <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
@@ -403,11 +383,6 @@ export default function NewProductPage() {
                     placeholder="5000"
                     min="0"
                   />
-                  {form.formState.errors.physicalPrice && (
-                    <p className="text-destructive text-xs">
-                      {form.formState.errors.physicalPrice.message}
-                    </p>
-                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -426,14 +401,32 @@ export default function NewProductPage() {
             </Card>
           )}
 
-          {/* Section 5: Image de couverture */}
+          {/* Section 4: Image de couverture */}
           <Card className="p-6">
             <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
               <ImageIcon className="w-5 h-5 text-primary" />
               Image de couverture
             </h2>
 
+            {/* Couverture actuelle */}
+            {productData?.coverUrl && (
+              <div className="mb-4">
+                <p className="text-sm text-muted-foreground mb-2">Couverture actuelle :</p>
+                <div className="w-32 h-40 rounded-lg overflow-hidden border border-border">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={productData.coverUrl}
+                    alt="Couverture actuelle"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                {productData?.coverUrl ? "Nouvelle couverture (optionnel)" : "Image de couverture"}
+              </label>
               <Input
                 id="coverImage"
                 type="file"
@@ -446,49 +439,27 @@ export default function NewProductPage() {
             </div>
           </Card>
 
-          {/* Section 6: Promotion (optionnel) */}
-          <Card className="p-6">
-            <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-accent" />
-              Promotion (optionnel)
-            </h2>
-
-            <div className="space-y-2 max-w-xs">
-              <label className="text-sm font-medium text-foreground">Réduction (%)</label>
-              <Input
-                type="number"
-                {...form.register("discountPercent", { valueAsNumber: true })}
-                placeholder="0"
-                min="0"
-                max="100"
-              />
-              <p className="text-xs text-muted-foreground">
-                Appliquer une réduction temporaire sur ce produit
-              </p>
-            </div>
-          </Card>
-
           {/* Submit Button */}
           <div className="flex justify-end gap-4 pt-4">
             <Link href="/seller/products">
-              <Button type="button" variant="outline" disabled={isLoading}>
+              <Button type="button" variant="outline" disabled={isSaving}>
                 Annuler
               </Button>
             </Link>
             <Button
               type="submit"
               className="bg-primary hover:bg-primary/90 min-w-[200px]"
-              disabled={isLoading}
+              disabled={isSaving}
             >
-              {isLoading ? (
+              {isSaving ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {uploadProgress || "Chargement..."}
+                  {uploadProgress || "Enregistrement..."}
                 </>
               ) : (
                 <>
-                  <Upload className="w-4 h-4 mr-2" />
-                  Mettre en vente
+                  <Save className="w-4 h-4 mr-2" />
+                  Enregistrer les modifications
                 </>
               )}
             </Button>
