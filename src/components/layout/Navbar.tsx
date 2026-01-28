@@ -3,14 +3,17 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, User as UserIcon, Menu, X, BookOpen, LogOut, LayoutDashboard } from "lucide-react";
 import { useCartStore } from "@/store/cart-store";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { User } from "@supabase/supabase-js";
+import { ModeToggle } from "@/components/ui/mode-toggle";
 
 export function Navbar() {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -30,6 +33,9 @@ export function Navbar() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        router.refresh();
+      }
     });
 
     // Handle scroll for glass effect
@@ -59,7 +65,6 @@ export function Navbar() {
     >
       <div className="container-wrapper">
         <div className="flex justify-between h-16">
-          {/* Logo & Navigation Desktop */}
           <div className="flex items-center">
             <Link href="/" className="flex-shrink-0 flex items-center gap-3">
               <Image
@@ -180,7 +185,6 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* Menu Mobile */}
       {isMenuOpen && (
         <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-lg">
           <div className="container-wrapper py-4 space-y-2">
