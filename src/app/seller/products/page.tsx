@@ -1,105 +1,228 @@
 import { createClient } from "@/lib/supabase/server";
-import { PlusCircle, Book, Download, Box } from "lucide-react";
+import { PlusCircle, Book, Download, Box, Sparkles, Package, Eye } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ProductActions } from "./product-actions";
+import { Button } from "@/components/ui/button";
+
+// Type pour un produit groupé par livre
+interface GroupedProduct {
+  bookId: string;
+  title: string;
+  author: string;
+  coverUrl: string | null;
+  hasDigital: boolean;
+  hasPhysical: boolean;
+  digitalPrice: number | null;
+  physicalPrice: number | null;
+  digitalStock: number;
+  physicalStock: number;
+  digitalListingId: string | null;
+  physicalListingId: string | null;
+  primaryListingId: string;
+  createdAt: string;
+}
 
 export default async function SellerProductsPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
     redirect("/login");
   }
 
   // Fetch listings with book details
-  const { data: listings, error } = await supabase
+  const { data: listings } = await supabase
     .from("listings")
-    .select(`
+    .select(
+      `
       *,
       book:books(*)
-    `)
+    `
+    )
     .eq("seller_id", user.id)
     .order("created_at", { ascending: false });
+
+  // Grouper les listings par livre
+  const productsMap = new Map<string, GroupedProduct>();
+
+  listings?.forEach((listing: any) => {
+    const bookId = listing.book_id;
+
+    if (!productsMap.has(bookId)) {
+      productsMap.set(bookId, {
+        bookId,
+        title: listing.book.title,
+        author: listing.book.author,
+        coverUrl: listing.book.cover_url,
+        hasDigital: listing.type === "digital",
+        hasPhysical: listing.type === "physical",
+        digitalPrice: listing.type === "digital" ? listing.price : null,
+        physicalPrice: listing.type === "physical" ? listing.price : null,
+        digitalStock: 0,
+        physicalStock: listing.type === "physical" ? listing.stock : 0,
+        digitalListingId: listing.type === "digital" ? listing.id : null,
+        physicalListingId: listing.type === "physical" ? listing.id : null,
+        primaryListingId: listing.id,
+        createdAt: listing.created_at,
+      });
+    } else {
+      const existing = productsMap.get(bookId)!;
+
+      if (listing.type === "digital") {
+        existing.hasDigital = true;
+        existing.digitalPrice = listing.price;
+        existing.digitalListingId = listing.id;
+      } else {
+        existing.hasPhysical = true;
+        existing.physicalPrice = listing.price;
+        existing.physicalStock = listing.stock;
+        existing.physicalListingId = listing.id;
+      }
+    }
+  });
+
+  const products = Array.from(productsMap.values());
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Mes Produits</h1>
-        <Link
-          href="/seller/products/new"
-          className="inline-flex items-center px-4 py-2 bg-blue-900 text-white text-sm font-medium rounded-lg hover:bg-blue-800 transition-colors"
-        >
-          <PlusCircle className="w-4 h-4 mr-2" />
-          Ajouter un livre
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Mes Produits</h1>
+          <p className="text-muted-foreground">
+            {products.length} livre{products.length > 1 ? "s" : ""} en vente
+          </p>
+        </div>
+        <Link href="/seller/products/new">
+          <Button className="bg-primary hover:bg-primary/90">
+            <PlusCircle className="w-4 h-4 mr-2" />
+            Ajouter un livre
+          </Button>
         </Link>
       </div>
 
-      {listings && listings.length > 0 ? (
+      {products.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {listings.map((listing: any) => (
-            <div
-              key={listing.id}
-              className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
-            >
-              <div className="h-48 bg-gray-100 relative">
-                {listing.book?.cover_url ? (
-                   // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={listing.book.cover_url}
-                    alt={listing.book.title}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-400">
-                    <Book className="w-12 h-12" />
-                  </div>
-                )}
-                <div className="absolute top-2 right-2">
-                  {listing.type === "digital" ? (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                      <Download className="w-3 h-3 mr-1" />
-                      Numérique
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      <Box className="w-3 h-3 mr-1" />
-                      Physique
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="p-4">
-                <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">
-                  {listing.book?.title}
-                </h3>
-                <p className="text-sm text-gray-500 mb-4">{listing.book?.author}</p>
+          {products.map((product) => {
+            const isHybrid = product.hasDigital && product.hasPhysical;
+            const lowestPrice = Math.min(
+              product.digitalPrice || Infinity,
+              product.physicalPrice || Infinity
+            );
 
-                <div className="flex items-center justify-between mt-4">
-                  <span className="text-xl font-bold text-gray-900">
-                    {listing.price.toLocaleString()} FCFA
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <div className="text-sm text-gray-500 mr-2">
-                        {listing.type === 'physical' && `Stock: ${listing.stock}`}
+            return (
+              <div
+                key={product.bookId}
+                className="bg-card rounded-xl border border-border overflow-hidden hover:shadow-lg transition-all"
+              >
+                {/* Image */}
+                <div className="aspect-[4/3] bg-muted relative">
+                  {product.coverUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={product.coverUrl}
+                      alt={product.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10">
+                      <Book className="w-12 h-12 text-primary/30" />
                     </div>
-                    <ProductActions id={listing.id} />
+                  )}
+
+                  {/* Badge type */}
+                  <div className="absolute top-2 right-2">
+                    {isHybrid ? (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-accent text-accent-foreground">
+                        <Sparkles className="w-3 h-3 mr-1" />
+                        Hybride
+                      </span>
+                    ) : product.hasDigital ? (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-primary text-primary-foreground">
+                        <Download className="w-3 h-3 mr-1" />
+                        Numérique
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-accent text-accent-foreground">
+                        <Box className="w-3 h-3 mr-1" />
+                        Physique
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-4">
+                  <h3 className="text-lg font-semibold text-foreground line-clamp-1">
+                    {product.title}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">{product.author}</p>
+
+                  {/* Variantes info */}
+                  <div className="space-y-2 mb-4">
+                    {product.hasDigital && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Download className="w-4 h-4" />
+                          Numérique
+                        </span>
+                        <span className="font-medium text-foreground">
+                          {product.digitalPrice?.toLocaleString()} FCFA
+                        </span>
+                      </div>
+                    )}
+                    {product.hasPhysical && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Package className="w-4 h-4" />
+                          Physique
+                        </span>
+                        <span className="font-medium text-foreground">
+                          {product.physicalPrice?.toLocaleString()} FCFA
+                          <span className="text-xs text-muted-foreground ml-1">
+                            ({product.physicalStock} en stock)
+                          </span>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center justify-between pt-4 border-t border-border">
+                    <Link href={`/marketplace/${product.primaryListingId}`}>
+                      <Button variant="ghost" size="sm" className="gap-1">
+                        <Eye className="w-4 h-4" />
+                        Voir
+                      </Button>
+                    </Link>
+                    <ProductActions
+                      id={product.primaryListingId}
+                      bookId={product.bookId}
+                      hasDigital={product.hasDigital}
+                      hasPhysical={product.hasPhysical}
+                      digitalListingId={product.digitalListingId}
+                      physicalListingId={product.physicalListingId}
+                    />
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
-        <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
-          <Book className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">Aucun produit</h3>
-          <p className="text-gray-500 mb-6">Commencez par ajouter votre premier livre.</p>
-          <Link
-            href="/seller/products/new"
-            className="text-blue-600 hover:text-blue-800 font-medium"
-          >
-            Mettre en vente
+        <div className="text-center py-16 bg-card rounded-xl border border-dashed border-border">
+          <Book className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
+          <h3 className="text-lg font-medium text-foreground">Aucun produit</h3>
+          <p className="text-muted-foreground mb-6">
+            Commencez par ajouter votre premier livre.
+          </p>
+          <Link href="/seller/products/new">
+            <Button className="bg-primary hover:bg-primary/90">
+              <PlusCircle className="w-4 h-4 mr-2" />
+              Mettre en vente
+            </Button>
           </Link>
         </div>
       )}

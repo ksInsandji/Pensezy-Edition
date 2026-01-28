@@ -5,12 +5,29 @@ import { Toaster } from "@/components/ui/toaster";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-playfair" });
+const inter = Inter({ 
+  subsets: ["latin"], 
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const playfair = Playfair_Display({ 
+  subsets: ["latin"], 
+  variable: "--font-playfair",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Pensezy Edition | La référence du livre physique et numérique",
-  description: "Plateforme hybride de vente de livres au Cameroun.",
+  description: "Plateforme hybride de vente de livres au Cameroun. Achetez des livres physiques ou lisez instantanément nos e-books sécurisés.",
+  keywords: ["livres cameroun", "littérature africaine", "e-books", "librairie en ligne"],
+  authors: [{ name: "Pensezy Edition" }],
+  openGraph: {
+    title: "Pensezy Edition",
+    description: "La plateforme de référence pour la littérature camerounaise",
+    type: "website",
+    locale: "fr_FR",
+  },
 };
 
 export default function RootLayout({
@@ -19,10 +36,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr">
-      <body className={`${inter.variable} ${playfair.variable} font-sans min-h-screen bg-stone-50 flex flex-col`}>
+    <html lang="fr" className={`${inter.variable} ${playfair.variable}`}>
+      <body className="font-sans antialiased min-h-screen flex flex-col bg-white">
         <Navbar />
-        <main className="flex-1 w-full">
+        <main className="flex-1">
           {children}
         </main>
         <Footer />

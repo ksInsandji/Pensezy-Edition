@@ -32,7 +32,7 @@ export default async function LibraryPage() {
     .eq("user_id", user.id);
 
   if (error) {
-    console.error("Library fetch error:", error);
+    console.log("Library fetch error:", error);
   }
 
   return (

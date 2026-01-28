@@ -56,13 +56,20 @@ export default async function ProfilePage() {
                             Ma Bibliothèque
                         </Button>
                     </Link>
-
-                    <Link href="/seller/dashboard" className="block">
-                        <Button variant="outline" className="w-full justify-start gap-3">
-                            <Package className="w-4 h-4" />
-                            Espace Vendeur
-                        </Button>
-                    </Link>
+                    {profile?.role === 'seller' || profile?.role === 'admin' ? (
+                        <Link href="/seller/dashboard" className="block">
+                            <Button variant="outline" className="w-full justify-start gap-3">
+                                <Package className="w-4 h-4" />
+                                Espace Vendeur
+                            </Button>
+                        </Link>
+                    ) : (
+                        <Link href="/seller/dashboard" className="block">
+                            <Button className="w-full bg-blue-900 hover:bg-blue-800 gap-3">
+                                Devenir Vendeur
+                            </Button>
+                        </Link>
+                    )}
                 </div>
             </div>
         </div>

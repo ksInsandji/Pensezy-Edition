@@ -7,19 +7,17 @@ import { LoginInput, RegisterInput } from "@/lib/validations/auth";
 // --- ACTION INSCRIPTION ---
 export async function signUpAction(data: RegisterInput) {
   const supabase = await createClient();
-  const origin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const origin = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
   // 1. Création du compte dans Supabase Auth
-  const { error } = await supabase.auth.signUp({
+  const { data: authData, error } = await supabase.auth.signUp({
     email: data.email,
     password: data.password,
     options: {
       emailRedirectTo: `${origin}/api/auth/callback`,
       data: {
         full_name: data.fullName,
-        // On stocke le rôle dans les métadonnées pour y accéder vite
-        // Note: Le trigger SQL que je t'ai donné remplira aussi la table 'profiles'
-        role: data.role, 
+        role: data.role, // 'user' ou 'seller'
       },
     },
   });
@@ -28,7 +26,23 @@ export async function signUpAction(data: RegisterInput) {
     return { error: error.message };
   }
 
-  // Si l'email confirmation est désactivé sur Supabase, on peut connecter direct
+  // 2. Mettre à jour le profil avec le bon rôle
+  // Le trigger SQL crée le profil mais peut ne pas copier le rôle correctement
+  if (authData.user) {
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({
+        role: data.role,
+        full_name: data.fullName,
+      })
+      .eq("id", authData.user.id);
+
+    if (profileError) {
+      console.error("Error updating profile role:", profileError);
+      // Ne pas faire échouer l'inscription pour ça
+    }
+  }
+
   return { success: true };
 }
 
@@ -46,37 +60,31 @@ export async function signInAction(data: LoginInput) {
     return { error: "Email ou mot de passe incorrect." };
   }
 
-  // 2. Vérification du rôle pour la redirection
-  // On récupère le profil complet pour être sûr
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  // On lit le rôle stocké soit dans metadata, soit en faisant une requête DB
-  // Ici, utilisons une requête DB pour être 100% sûr du rôle actuel
+  // 2. Récupérer l'utilisateur et son rôle
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user?.id) {
-     return { error: "Utilisateur introuvable" };
+    return { error: "Utilisateur introuvable" };
   }
 
+  // Récupérer le rôle depuis la table profiles
   const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
     .single();
 
-  const role = profile?.role || 'user';
+  // Utiliser le rôle de profiles, sinon celui de user_metadata, sinon 'user'
+  const role = profile?.role || user.user_metadata?.role || "user";
 
-  // 3. Redirection intelligente
-  // Note: 'role' typé par Supabase peut être plus restrictif que ce qu'on attend.
-  // On caste en string pour la comparaison souple.
-  const userRole = role as string;
-
-  if (userRole === 'admin') {
-    redirect('/admin/validations');
-  } else if (userRole === 'seller' || user?.user_metadata.role === 'seller') {
-    // Si l'utilisateur est un vendeur, direction son dashboard
-    redirect('/seller/products');
+  // 3. Redirection selon le rôle
+  if (role === "admin") {
+    redirect("/admin");
+  } else if (role === "seller") {
+    redirect("/seller/dashboard");
   } else {
-    // Sinon (acheteur), direction le catalogue
-    redirect('/browse');
+    redirect("/marketplace");
   }
 }
