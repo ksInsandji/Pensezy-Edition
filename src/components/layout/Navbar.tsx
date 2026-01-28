@@ -19,6 +19,7 @@ import {
 import { useCartStore } from "@/store/cart-store";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { User } from "@supabase/supabase-js";
+import { ModeToggle } from "@/components/ui/mode-toggle";
 
 type UserRole = "user" | "seller" | "admin" | "moderator";
 
@@ -274,7 +275,6 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* Menu Mobile */}
       {isMenuOpen && (
         <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-lg">
           <div className="container-wrapper py-4 space-y-2">
