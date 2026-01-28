@@ -66,9 +66,6 @@ export function Navbar() {
             <ModeToggle />
             {user ? (
               <>
-                <Link href="/seller/dashboard">
-                  <Button variant="outline" size="sm">Espace Vendeur</Button>
-                </Link>
                 <Link href="/profile">
                   <Button variant="outline" size="sm" className="gap-2">
                     <UserIcon className="h-4 w-4" />
