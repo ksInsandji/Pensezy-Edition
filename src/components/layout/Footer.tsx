@@ -21,9 +21,9 @@ export function Footer() {
         <div>
           <h3 className="text-white font-semibold mb-4">Explorer</h3>
           <ul className="space-y-2 text-sm">
-            <li><Link href="/catalog" className="hover:text-white transition-colors">Catalogue</Link></li>
-            <li><Link href="/best-sellers" className="hover:text-white transition-colors">Meilleures ventes</Link></li>
-            <li><Link href="/new-releases" className="hover:text-white transition-colors">Nouveautés</Link></li>
+            <li><Link href="/marketplace" className="hover:text-white transition-colors">Catalogue</Link></li>
+            <li><Link href="/marketplace" className="hover:text-white transition-colors">Meilleures ventes</Link></li>
+            <li><Link href="/marketplace" className="hover:text-white transition-colors">Nouveautés</Link></li>
           </ul>
         </div>
 
@@ -31,9 +31,9 @@ export function Footer() {
         <div>
           <h3 className="text-white font-semibold mb-4">Aide</h3>
           <ul className="space-y-2 text-sm">
-            <li><Link href="/faq" className="hover:text-white transition-colors">FAQ</Link></li>
-            <li><Link href="/contact" className="hover:text-white transition-colors">Contact</Link></li>
-            <li><Link href="/terms" className="hover:text-white transition-colors">Conditions générales</Link></li>
+            <li><Link href="/about" className="hover:text-white transition-colors">FAQ</Link></li>
+            <li><Link href="/about" className="hover:text-white transition-colors">Contact</Link></li>
+            <li><Link href="/about" className="hover:text-white transition-colors">Conditions générales</Link></li>
           </ul>
         </div>
 
