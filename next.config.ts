@@ -29,9 +29,16 @@ const nextConfig: NextConfig = {
         pathname: "/**",
       },
       {
-        // Supabase Storage - ajuster selon votre projet
+        // Supabase Storage - votre projet specifique
         protocol: "https",
-        hostname: "*.supabase.co",
+        hostname: "elnyoarfjghwmxqyjdbz.supabase.co",
+        port: "",
+        pathname: "/storage/v1/object/public/**",
+      },
+      {
+        // Supabase Storage - fallback avec wildcard
+        protocol: "https",
+        hostname: "**.supabase.co",
         port: "",
         pathname: "/storage/v1/object/public/**",
       },

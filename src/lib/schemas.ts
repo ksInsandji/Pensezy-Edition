@@ -4,14 +4,34 @@ import * as z from "zod";
 export const productTypeSchema = z.enum(["physical", "digital", "hybrid"]);
 export type ProductType = z.infer<typeof productTypeSchema>;
 
-// Schéma complet pour la création de produit
+// Liste des categories disponibles
+export const BOOK_CATEGORIES = [
+  { value: "roman", label: "Roman" },
+  { value: "education", label: "Education" },
+  { value: "poesie", label: "Poesie" },
+  { value: "histoire", label: "Histoire" },
+  { value: "sciences", label: "Sciences" },
+  { value: "economie", label: "Economie" },
+  { value: "developpement_personnel", label: "Developpement Personnel" },
+  { value: "jeunesse", label: "Jeunesse" },
+  { value: "religion", label: "Religion" },
+  { value: "informatique", label: "Informatique" },
+  { value: "art", label: "Art" },
+  { value: "cuisine", label: "Cuisine" },
+  { value: "voyage", label: "Voyage" },
+  { value: "sante", label: "Sante" },
+  { value: "autre", label: "Autre" },
+] as const;
+
+// Schema complet pour la creation de produit
 export const productSchema = z.object({
   // Informations du livre
   title: z.string().min(1, "Le titre est requis"),
   author: z.string().min(1, "L'auteur est requis"),
   isbn: z.string().optional(),
   description: z.string().optional(),
-  category: z.string().optional(),
+  category: z.string().optional(), // Categorie principale (deprecated, garder pour compatibilite)
+  categories: z.array(z.string()).optional(), // Multi-categories
 
   // Type de produit (physique, numérique ou hybride)
   productType: productTypeSchema,

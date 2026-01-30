@@ -4,7 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { MoreVertical, UserCog, Trash2, Loader2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical, User, Store, Shield, Trash2, Loader2 } from "lucide-react";
 import { updateUserRole, deleteUser } from "../actions";
 
 interface UserActionsProps {
@@ -13,7 +21,6 @@ interface UserActionsProps {
 }
 
 export function UserActions({ userId, currentRole }: UserActionsProps) {
-  const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
@@ -48,7 +55,6 @@ export function UserActions({ userId, currentRole }: UserActionsProps) {
       });
     } finally {
       setIsLoading(false);
-      setIsOpen(false);
     }
   };
 
@@ -82,75 +88,77 @@ export function UserActions({ userId, currentRole }: UserActionsProps) {
       });
     } finally {
       setIsLoading(false);
-      setIsOpen(false);
     }
   };
 
   return (
-    <div className="relative flex justify-end">
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => setIsOpen(!isOpen)}
-        disabled={isLoading}
-      >
-        {isLoading ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          <MoreVertical className="w-4 h-4" />
-        )}
-      </Button>
+    <div className="flex justify-end">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" disabled={isLoading}>
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <MoreVertical className="w-4 h-4" />
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuLabel>Changer le role</DropdownMenuLabel>
 
-      {isOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setIsOpen(false)}
-          />
-          <div className="absolute right-0 top-full mt-1 w-48 bg-card border border-border rounded-lg shadow-lg z-50 py-1">
-            <div className="px-3 py-2 text-xs font-medium text-muted-foreground border-b border-border">
-              Changer le role
-            </div>
-            <button
-              onClick={() => handleRoleChange("user")}
-              disabled={currentRole === "user"}
-              className={`w-full text-left px-3 py-2 text-sm hover:bg-muted disabled:opacity-50 ${
-                currentRole === "user" ? "bg-green-50 text-green-700" : "text-foreground"
-              }`}
-            >
+          <DropdownMenuItem
+            onClick={() => handleRoleChange("user")}
+            disabled={currentRole === "user"}
+            className={currentRole === "user" ? "bg-green-50" : ""}
+          >
+            <User className="w-4 h-4 mr-2 text-green-600" />
+            <span className={currentRole === "user" ? "text-green-700 font-medium" : ""}>
               Lecteur
-            </button>
-            <button
-              onClick={() => handleRoleChange("seller")}
-              disabled={currentRole === "seller"}
-              className={`w-full text-left px-3 py-2 text-sm hover:bg-muted disabled:opacity-50 ${
-                currentRole === "seller" ? "bg-purple-50 text-purple-700" : "text-foreground"
-              }`}
-            >
-              Vendeur
-            </button>
-            <button
-              onClick={() => handleRoleChange("admin")}
-              disabled={currentRole === "admin"}
-              className={`w-full text-left px-3 py-2 text-sm hover:bg-muted disabled:opacity-50 ${
-                currentRole === "admin" ? "bg-red-50 text-red-700" : "text-foreground"
-              }`}
-            >
-              Administrateur
-            </button>
+            </span>
+            {currentRole === "user" && (
+              <span className="ml-auto text-xs text-green-600">Actuel</span>
+            )}
+          </DropdownMenuItem>
 
-            <div className="border-t border-border mt-1 pt-1">
-              <button
-                onClick={handleDelete}
-                className="w-full text-left px-3 py-2 text-sm text-destructive hover:bg-destructive/10 flex items-center gap-2"
-              >
-                <Trash2 className="w-4 h-4" />
-                Supprimer
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+          <DropdownMenuItem
+            onClick={() => handleRoleChange("seller")}
+            disabled={currentRole === "seller"}
+            className={currentRole === "seller" ? "bg-purple-50" : ""}
+          >
+            <Store className="w-4 h-4 mr-2 text-purple-600" />
+            <span className={currentRole === "seller" ? "text-purple-700 font-medium" : ""}>
+              Vendeur
+            </span>
+            {currentRole === "seller" && (
+              <span className="ml-auto text-xs text-purple-600">Actuel</span>
+            )}
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            onClick={() => handleRoleChange("admin")}
+            disabled={currentRole === "admin"}
+            className={currentRole === "admin" ? "bg-red-50" : ""}
+          >
+            <Shield className="w-4 h-4 mr-2 text-red-600" />
+            <span className={currentRole === "admin" ? "text-red-700 font-medium" : ""}>
+              Administrateur
+            </span>
+            {currentRole === "admin" && (
+              <span className="ml-auto text-xs text-red-600">Actuel</span>
+            )}
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuItem
+            onClick={handleDelete}
+            className="text-destructive focus:text-destructive focus:bg-destructive/10"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Supprimer
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

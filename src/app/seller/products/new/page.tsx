@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { createProduct } from "../../actions";
-import { productSchema, ProductFormValues, ProductType } from "@/lib/schemas";
+import { productSchema, ProductFormValues, ProductType, BOOK_CATEGORIES } from "@/lib/schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -33,6 +33,8 @@ export default function NewProductPage() {
   const [error, setError] = useState("");
   const supabase = createClient();
 
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: {
@@ -41,6 +43,7 @@ export default function NewProductPage() {
       isbn: "",
       description: "",
       category: "",
+      categories: [],
       productType: "hybrid",
       digitalPrice: null,
       physicalPrice: null,
@@ -51,6 +54,15 @@ export default function NewProductPage() {
       filePath: null,
     },
   });
+
+  const toggleCategory = (categoryValue: string) => {
+    setSelectedCategories(prev => {
+      if (prev.includes(categoryValue)) {
+        return prev.filter(c => c !== categoryValue);
+      }
+      return [...prev, categoryValue];
+    });
+  };
 
   const productType = form.watch("productType");
   const showDigitalFields = productType === "digital" || productType === "hybrid";
@@ -111,6 +123,7 @@ export default function NewProductPage() {
       setUploadProgress("Enregistrement...");
       const result = await createProduct({
         ...data,
+        categories: selectedCategories,
         coverUrl,
         filePath,
       });
@@ -217,23 +230,31 @@ export default function NewProductPage() {
                 <Input {...form.register("isbn")} placeholder="978-..." />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Catégorie</label>
-                <select
-                  {...form.register("category")}
-                  className="w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="">Sélectionner une catégorie</option>
-                  <option value="roman">Roman</option>
-                  <option value="education">Éducation</option>
-                  <option value="poesie">Poésie</option>
-                  <option value="histoire">Histoire</option>
-                  <option value="sciences">Sciences</option>
-                  <option value="economie">Économie</option>
-                  <option value="developpement_personnel">Développement Personnel</option>
-                  <option value="jeunesse">Jeunesse</option>
-                  <option value="autre">Autre</option>
-                </select>
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-medium text-foreground">
+                  Categories (selectionner une ou plusieurs)
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {BOOK_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat.value}
+                      type="button"
+                      onClick={() => toggleCategory(cat.value)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                        selectedCategories.includes(cat.value)
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+                {selectedCategories.length > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {selectedCategories.length} categorie(s) selectionnee(s)
+                  </p>
+                )}
               </div>
             </div>
           </Card>

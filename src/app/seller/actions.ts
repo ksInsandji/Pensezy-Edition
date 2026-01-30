@@ -24,7 +24,7 @@ export async function createProduct(params: ProductFormValues) {
   }
 
   try {
-    // 1. Créer le livre dans la table books
+    // 1. Creer le livre dans la table books
     const { data: book, error: bookError } = await supabase
       .from("books")
       .insert({
@@ -33,7 +33,8 @@ export async function createProduct(params: ProductFormValues) {
         isbn: data.isbn || null,
         description: data.description || null,
         cover_url: data.coverUrl || null,
-        category: data.category || null,
+        category: data.categories?.[0] || data.category || null, // Premiere categorie comme principale
+        categories: data.categories || [], // Array de toutes les categories
         created_by: user.id,
       })
       .select()

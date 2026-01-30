@@ -36,7 +36,7 @@ export default async function MarketplacePage(props: { searchParams: SearchParam
   const type = searchParams.type?.toString();
   const page = Number(searchParams.page) || 1;
 
-  // Récupérer tous les listings actifs
+  // Recuperer uniquement les listings actifs (approuves)
   let dbQuery = supabase
     .from("listings")
     .select(
@@ -46,6 +46,7 @@ export default async function MarketplacePage(props: { searchParams: SearchParam
       seller:profiles(full_name)
     `
     )
+    .eq("status", "active")
     .order("created_at", { ascending: false });
 
   // Filtrer par type si spécifié

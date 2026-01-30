@@ -317,3 +317,241 @@ export async function invalidateOrder(orderId: string, newStatus: "pending" | "c
     return { error: e.message };
   }
 }
+
+// ==================== GESTION DES PANIERS ====================
+
+/**
+ * Recuperer tous les paniers des utilisateurs
+ */
+export async function getAllUserCarts() {
+  try {
+    const supabase = await checkAdmin();
+
+    const { data: carts, error } = await supabase
+      .from("carts")
+      .select(`
+        id,
+        user_id,
+        updated_at,
+        user:profiles!carts_user_id_fkey(id, full_name, email),
+        cart_items(
+          id,
+          quantity,
+          listing:listings(
+            id,
+            price,
+            type,
+            book:books(id, title, author, cover_url)
+          )
+        )
+      `)
+      .order("updated_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching carts:", error);
+      return { error: "Erreur lors de la recuperation des paniers" };
+    }
+
+    return { carts };
+  } catch (e: any) {
+    return { error: e.message };
+  }
+}
+
+/**
+ * Valider un panier (convertir en commande payee)
+ * Le client obtient acces aux produits sans payer
+ */
+export async function validateCartAsOrder(cartId: string, userId: string) {
+  try {
+    const supabase = await checkAdmin();
+
+    // 1. Recuperer les items du panier
+    const { data: cartItems, error: cartError } = await supabase
+      .from("cart_items")
+      .select(`
+        id,
+        quantity,
+        listing:listings(id, price, type, book_id, seller_id)
+      `)
+      .eq("cart_id", cartId);
+
+    if (cartError || !cartItems || cartItems.length === 0) {
+      return { error: "Panier vide ou introuvable" };
+    }
+
+    // 2. Calculer le total
+    const totalAmount = cartItems.reduce((sum: number, item: any) => {
+      return sum + (item.listing?.price || 0) * item.quantity;
+    }, 0);
+
+    // 3. Creer la commande
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .insert({
+        buyer_id: userId,
+        total_amount: totalAmount,
+        status: "paid",
+        payment_method: "admin_gift",
+        paid_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (orderError || !order) {
+      return { error: "Erreur lors de la creation de la commande" };
+    }
+
+    // 4. Creer les items de commande et accorder les acces
+    for (const item of cartItems) {
+      const listing = item.listing as any;
+      if (!listing) continue;
+
+      // Creer l'item de commande
+      await supabase.from("order_items").insert({
+        order_id: order.id,
+        listing_id: listing.id,
+        quantity: item.quantity,
+        price_at_purchase: listing.price,
+      });
+
+      // Accorder l'acces pour les produits numeriques
+      if (listing.type === "digital") {
+        const { data: existingAccess } = await supabase
+          .from("user_books")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("book_id", listing.book_id)
+          .single();
+
+        if (!existingAccess) {
+          await supabase.from("user_books").insert({
+            user_id: userId,
+            book_id: listing.book_id,
+            purchased_at: new Date().toISOString(),
+            purchase_type: "gift",
+          });
+        }
+      }
+
+      // Mettre a jour le stock pour les produits physiques
+      if (listing.type === "physical") {
+        await supabase.rpc("decrement_stock", {
+          listing_id: listing.id,
+          amount: item.quantity,
+        });
+      }
+    }
+
+    // 5. Vider le panier
+    await supabase.from("cart_items").delete().eq("cart_id", cartId);
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/orders");
+    return { success: true, orderId: order.id };
+  } catch (e: any) {
+    console.error("Error validating cart:", e);
+    return { error: e.message };
+  }
+}
+
+/**
+ * Supprimer un item specifique d'un panier utilisateur
+ */
+export async function removeCartItem(cartItemId: string) {
+  try {
+    const supabase = await checkAdmin();
+
+    const { error } = await supabase
+      .from("cart_items")
+      .delete()
+      .eq("id", cartItemId);
+
+    if (error) {
+      return { error: "Erreur lors de la suppression de l'item" };
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/orders");
+    return { success: true };
+  } catch (e: any) {
+    return { error: e.message };
+  }
+}
+
+/**
+ * Vider completement un panier utilisateur
+ */
+export async function clearUserCart(cartId: string) {
+  try {
+    const supabase = await checkAdmin();
+
+    const { error } = await supabase
+      .from("cart_items")
+      .delete()
+      .eq("cart_id", cartId);
+
+    if (error) {
+      return { error: "Erreur lors du vidage du panier" };
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/orders");
+    return { success: true };
+  } catch (e: any) {
+    return { error: e.message };
+  }
+}
+
+// ==================== RECHERCHE ADMIN ====================
+
+/**
+ * Recherche globale pour l'admin (utilisateurs, livres, commandes)
+ */
+export async function adminSearch(query: string) {
+  try {
+    const supabase = await checkAdmin();
+
+    if (!query || query.length < 2) {
+      return { results: { users: [], books: [], orders: [] } };
+    }
+
+    const searchTerm = `%${query}%`;
+
+    // Rechercher utilisateurs
+    const { data: users } = await supabase
+      .from("profiles")
+      .select("id, full_name, email, role")
+      .or(`full_name.ilike.${searchTerm},email.ilike.${searchTerm}`)
+      .limit(5);
+
+    // Rechercher livres
+    const { data: books } = await supabase
+      .from("books")
+      .select("id, title, author, cover_url")
+      .or(`title.ilike.${searchTerm},author.ilike.${searchTerm}`)
+      .limit(5);
+
+    // Rechercher commandes par ID
+    const { data: orders } = await supabase
+      .from("orders")
+      .select(`
+        id,
+        total_amount,
+        status,
+        buyer:profiles!orders_buyer_id_fkey(full_name, email)
+      `)
+      .ilike("id", searchTerm)
+      .limit(5);
+
+    return {
+      results: {
+        users: users || [],
+        books: books || [],
+        orders: orders || [],
+      },
+    };
+  } catch (e: any) {
+    return { error: e.message };
+  }
+}

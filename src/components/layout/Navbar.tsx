@@ -16,7 +16,7 @@ import {
   LayoutDashboard,
   Library,
 } from "lucide-react";
-import { useCartStore } from "@/store/cart-store";
+import { useCartStore, syncCartWithDatabase } from "@/store/cart-store";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { User } from "@supabase/supabase-js";
 import { ModeToggle } from "@/components/ui/mode-toggle";
@@ -32,6 +32,7 @@ export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const supabase = createClient();
   const cartCount = useCartStore((state) => state.getCount());
+  const clearCart = useCartStore((state) => state.clearCart);
 
   useEffect(() => {
     const initializeNavbar = async () => {
@@ -88,7 +89,12 @@ export function Navbar() {
         setUserRole(null);
       }
 
-      if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
+      if (event === "SIGNED_IN") {
+        // Synchroniser le panier avec la base de donnees a la connexion
+        syncCartWithDatabase(session?.user?.id || null);
+        router.refresh();
+      } else if (event === "SIGNED_OUT") {
+        clearCart(); // Vider le panier local
         router.refresh();
       }
     });
@@ -103,12 +109,13 @@ export function Navbar() {
       subscription.unsubscribe();
       window.removeEventListener("scroll", handleScroll);
     };
-  }, [supabase, router]);
+  }, [supabase, router, clearCart]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
     setUserRole(null);
+    clearCart(); // Vider le panier local a la deconnexion
     router.push("/");
     router.refresh();
   };

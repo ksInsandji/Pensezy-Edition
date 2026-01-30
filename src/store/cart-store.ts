@@ -15,18 +15,22 @@ export type CartItem = {
 
 type CartState = {
   items: CartItem[]
+  isHydrated: boolean
   addItem: (item: CartItem) => void
   removeItem: (listingId: string) => void
   updateQuantity: (listingId: string, quantity: number) => void
   clearCart: () => void
   getTotal: () => number
   getCount: () => number
+  setItems: (items: CartItem[]) => void
+  setHydrated: (state: boolean) => void
 }
 
 export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
+      isHydrated: false,
 
       addItem: (newItem) => {
         set((state) => {
@@ -42,7 +46,7 @@ export const useCartStore = create<CartState>()(
             const newQuantity = existingItem.quantity + 1
             // Vérification stock (sommaire)
             if (existingItem.maxStock && newQuantity > existingItem.maxStock) {
-              return state // Ou lancer une alerte
+              return state
             }
             return {
               items: state.items.map(i =>
@@ -84,12 +88,53 @@ export const useCartStore = create<CartState>()(
 
       getCount: () => {
         return get().items.reduce((count, item) => count + item.quantity, 0)
-      }
+      },
+
+      // Nouvelle fonction pour definir les items (utilisee lors de la sync depuis la DB)
+      setItems: (items) => set({ items }),
+
+      setHydrated: (state) => set({ isHydrated: state }),
     }),
     {
       name: 'pensezy-cart',
       storage: createJSONStorage(() => localStorage),
-      skipHydration: true, // Important pour Next.js pour éviter le mismatch
+      skipHydration: true,
+      onRehydrateStorage: () => (state) => {
+        state?.setHydrated(true)
+      },
     }
   )
 )
+
+// Hook pour synchroniser le panier avec la base de donnees
+export async function syncCartWithDatabase(userId: string | null) {
+  if (typeof window === 'undefined') return
+
+  const { syncCartToDatabase, loadCartFromDatabase } = await import('@/app/actions/cart')
+  const store = useCartStore.getState()
+
+  if (userId) {
+    // Utilisateur connecte: charger depuis DB et fusionner avec local
+    const { items: dbItems } = await loadCartFromDatabase()
+
+    if (dbItems && dbItems.length > 0) {
+      // Fusionner: items locaux + items DB (sans doublons)
+      const localItems = store.items
+      const mergedItems: CartItem[] = [...dbItems]
+
+      for (const localItem of localItems) {
+        const existsInDb = mergedItems.find(i => i.listingId === localItem.listingId)
+        if (!existsInDb) {
+          mergedItems.push(localItem)
+        }
+      }
+
+      store.setItems(mergedItems)
+    }
+
+    // Sauvegarder l'etat fusionne dans la DB
+    await syncCartToDatabase(
+      store.items.map(i => ({ listingId: i.listingId, quantity: i.quantity }))
+    )
+  }
+}

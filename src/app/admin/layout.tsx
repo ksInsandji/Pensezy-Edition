@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { LogoutButton } from "./LogoutButton";
+import { AdminSearchBar } from "./AdminSearchBar";
+import { AdminNotifications } from "./AdminNotifications";
 import {
   LayoutDashboard,
   Users,
@@ -11,11 +13,8 @@ import {
   Settings,
   CreditCard,
   BarChart3,
-  Shield,
   Home,
-  LogOut,
-  Bell,
-  Search
+  Menu,
 } from "lucide-react";
 
 const adminNavItems = [
@@ -38,15 +37,34 @@ export default async function AdminLayout({
 
   if (!user) redirect("/login");
 
-  // Vérification simplifiée du rôle admin
+  // Verification simplifiee du role admin
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
   if (profile?.role !== "admin" && user.user_metadata?.role !== "admin") {
     redirect("/marketplace");
   }
 
+  // Recuperer les stats pour les notifications
+  const { count: pendingOrders } = await supabase
+    .from("orders")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "pending");
+
+  const { count: pendingProducts } = await supabase
+    .from("listings")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "pending");
+
+  // Nouveaux utilisateurs aujourd'hui
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const { count: newUsersToday } = await supabase
+    .from("profiles")
+    .select("*", { count: "exact", head: true })
+    .gte("created_at", today.toISOString());
+
   return (
     <div className="min-h-screen bg-slate-50 flex overflow-hidden">
-      {/* Sidebar Fixe (N'est plus perturbée par la Navbar principale) */}
+      {/* Sidebar Fixe */}
       <aside className="fixed inset-y-0 left-0 w-64 bg-white border-r border-slate-200 z-50 hidden md:flex flex-col shadow-sm">
         <div className="p-6 border-b border-slate-100">
           <Link href="/admin" className="flex items-center gap-3">
@@ -67,31 +85,57 @@ export default async function AdminLayout({
             >
               <item.icon className="w-5 h-5 group-hover:text-blue-600" />
               <span className="font-medium text-sm">{item.label}</span>
+              {/* Badges pour les items avec notifications */}
+              {item.href === "/admin/orders" && pendingOrders ? (
+                <span className="ml-auto bg-yellow-100 text-yellow-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                  {pendingOrders}
+                </span>
+              ) : null}
+              {item.href === "/admin/products" && pendingProducts ? (
+                <span className="ml-auto bg-purple-100 text-purple-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                  {pendingProducts}
+                </span>
+              ) : null}
             </Link>
           ))}
         </nav>
 
-        <div className="p-4 border-t border-slate-100 space-y-1">
-          {/* Nouveau bouton de déconnexion réelle */}
+        <div className="p-4 border-t border-slate-100 space-y-2">
+          <Link
+            href="/"
+            className="flex items-center gap-3 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-xl transition-colors font-medium"
+          >
+            <Home className="w-4 h-4" />
+            Retour au site
+          </Link>
           <LogoutButton />
         </div>
       </aside>
 
       {/* Contenu Principal avec son propre Header */}
       <div className="flex-1 md:ml-64 flex flex-col min-h-screen h-screen overflow-y-auto">
-        {/* Nouveau Header spécifique à l'Admin (Remplace visuellement la Navbar globale) */}
-        <header className="h-16 bg-white border-b border-slate-200 sticky top-0 z-40 px-8 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-4 bg-slate-100 px-4 py-2 rounded-full w-80">
-            <Search className="w-4 h-4 text-slate-400" />
-            <input type="text" placeholder="Rechercher un utilisateur, un livre..." className="bg-transparent text-sm outline-none w-full" />
+        {/* Header Admin */}
+        <header className="h-16 bg-white border-b border-slate-200 sticky top-0 z-40 px-4 md:px-8 flex items-center justify-between shrink-0">
+          {/* Mobile menu button */}
+          <button className="md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg">
+            <Menu className="w-5 h-5" />
+          </button>
+
+          {/* Search Bar */}
+          <div className="hidden md:block">
+            <AdminSearchBar />
           </div>
-          
+
           <div className="flex items-center gap-4">
-            <button className="p-2 text-slate-400 hover:text-slate-600 relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-orange-500 rounded-full border border-white"></span>
-            </button>
-            <div className="h-8 w-px bg-slate-200 mx-2" />
+            {/* Notifications */}
+            <AdminNotifications
+              pendingOrders={pendingOrders || 0}
+              pendingProducts={pendingProducts || 0}
+              newUsers={newUsersToday || 0}
+            />
+
+            <div className="h-8 w-px bg-slate-200 mx-2 hidden md:block" />
+
             <div className="flex flex-col text-right">
               <span className="text-xs font-bold text-slate-900">{user.email?.split('@')[0]}</span>
               <span className="text-[10px] text-green-600 font-medium">Session Admin Active</span>
@@ -100,7 +144,7 @@ export default async function AdminLayout({
         </header>
 
         {/* Zone de rendu des pages (children) */}
-        <main className="p-8">
+        <main className="p-4 md:p-8 flex-1">
           <div className="max-w-6xl mx-auto">
             {children}
           </div>
