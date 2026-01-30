@@ -226,6 +226,9 @@ export default async function AdminProductsPage({
                   <ProductAdminActions
                     listingId={listing.id}
                     currentStatus={listing.status}
+                    currentPrice={listing.price || 0}
+                    currentStock={listing.stock || 0}
+                    productType={listing.type}
                   />
                 </div>
               </div>

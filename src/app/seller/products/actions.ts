@@ -56,7 +56,7 @@ export async function createProductAction(formData: FormData) {
     .single();
 
   if (bookError || !book) {
-    console.error(bookError);
+    console.error("Error inserting book:", bookError);
     return { error: "Erreur lors de la création de la fiche livre." };
   }
 

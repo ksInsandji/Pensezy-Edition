@@ -148,12 +148,13 @@ export function Navbar() {
               >
                 Catalogue
               </Link>
-              {user && (
+              {/* Bibliotheque visible uniquement pour les non-admins */}
+              {user && !canAccessAdmin && (
                 <Link
                   href="/library"
                   className="text-foreground/70 hover:text-foreground hover:bg-primary/5 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                 >
-                  Ma Bibliothèque
+                  Ma Bibliotheque
                 </Link>
               )}
             </div>
@@ -165,8 +166,21 @@ export function Navbar() {
 
             {user ? (
               <>
-                {/* Menu Vendeur - seulement pour les vendeurs */}
-                {canAccessSeller && (
+                {/* Menu Admin - affiche en premier et de maniere prominente pour les admins */}
+                {canAccessAdmin && (
+                  <Link href="/admin">
+                    <Button
+                      size="sm"
+                      className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+                    >
+                      <LayoutDashboard className="h-4 w-4" />
+                      Administration
+                    </Button>
+                  </Link>
+                )}
+
+                {/* Menu Vendeur - seulement pour les vendeurs (pas les admins) */}
+                {userRole === "seller" && (
                   <Link href="/seller/dashboard">
                     <Button
                       variant="ghost"
@@ -179,36 +193,26 @@ export function Navbar() {
                   </Link>
                 )}
 
-                {/* Menu Admin - seulement pour les admins */}
-                {canAccessAdmin && (
-                  <Link href="/admin">
+                {/* Mon Compte - cache pour les admins qui ont deja acces via admin panel */}
+                {!canAccessAdmin && (
+                  <Link href="/profile">
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="gap-2 text-accent hover:text-accent"
+                      className="gap-2 text-foreground/70 hover:text-foreground"
                     >
-                      Admin
+                      <UserIcon className="h-4 w-4" />
+                      Mon Compte
                     </Button>
                   </Link>
                 )}
-
-                <Link href="/profile">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="gap-2 text-foreground/70 hover:text-foreground"
-                  >
-                    <UserIcon className="h-4 w-4" />
-                    Mon Compte
-                  </Button>
-                </Link>
 
                 <Button
                   onClick={handleSignOut}
                   variant="ghost"
                   size="icon"
                   className="h-9 w-9 rounded-full text-foreground/70 hover:text-destructive hover:bg-destructive/10"
-                  title="Déconnexion"
+                  title="Deconnexion"
                 >
                   <LogOut className="h-4 w-4" />
                 </Button>
@@ -287,14 +291,15 @@ export function Navbar() {
               <span className="font-medium">Catalogue</span>
             </Link>
 
-            {user && (
+            {/* Bibliotheque visible uniquement pour les non-admins */}
+            {user && !canAccessAdmin && (
               <Link
                 href="/library"
                 className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
                 <Library className="h-5 w-5 text-primary" />
-                <span className="font-medium">Ma Bibliothèque</span>
+                <span className="font-medium">Ma Bibliotheque</span>
               </Link>
             )}
 
@@ -302,8 +307,20 @@ export function Navbar() {
 
             {user ? (
               <>
-                {/* Menu Vendeur Mobile - seulement pour les vendeurs */}
-                {canAccessSeller && (
+                {/* Menu Admin Mobile - affiche en premier pour les admins */}
+                {canAccessAdmin && (
+                  <Link
+                    href="/admin"
+                    className="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <LayoutDashboard className="h-5 w-5 text-primary" />
+                    <span className="font-medium text-primary">Administration</span>
+                  </Link>
+                )}
+
+                {/* Menu Vendeur Mobile - seulement pour les vendeurs (pas les admins) */}
+                {userRole === "seller" && (
                   <Link
                     href="/seller/dashboard"
                     className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted transition-colors"
@@ -314,26 +331,17 @@ export function Navbar() {
                   </Link>
                 )}
 
-                {/* Menu Admin Mobile */}
-                {canAccessAdmin && (
+                {/* Mon Compte - cache pour les admins */}
+                {!canAccessAdmin && (
                   <Link
-                    href="/admin"
-                    className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-accent/10 transition-colors"
+                    href="/profile"
+                    className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted transition-colors"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    <LayoutDashboard className="h-5 w-5 text-accent" />
-                    <span className="font-medium text-accent">Administration</span>
+                    <UserIcon className="h-5 w-5 text-muted-foreground" />
+                    <span className="font-medium">Mon Compte</span>
                   </Link>
                 )}
-
-                <Link
-                  href="/profile"
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <UserIcon className="h-5 w-5 text-muted-foreground" />
-                  <span className="font-medium">Mon Compte</span>
-                </Link>
 
                 <button
                   onClick={() => {
@@ -343,7 +351,7 @@ export function Navbar() {
                   className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-destructive/10 text-destructive transition-colors w-full"
                 >
                   <LogOut className="h-5 w-5" />
-                  <span className="font-medium">Déconnexion</span>
+                  <span className="font-medium">Deconnexion</span>
                 </button>
               </>
             ) : (

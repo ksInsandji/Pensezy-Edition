@@ -196,9 +196,11 @@ export default async function AdminOrdersPage({
                     {order.total_amount?.toLocaleString()} FCFA
                   </p>
 
-                  {order.status === "pending" && (
-                    <OrderActions orderId={order.id} buyerId={order.buyer_id} />
-                  )}
+                  <OrderActions
+                    orderId={order.id}
+                    buyerId={order.buyer_id}
+                    currentStatus={order.status}
+                  />
                 </div>
               </div>
             </Card>

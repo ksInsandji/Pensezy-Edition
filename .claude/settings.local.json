@@ -4,7 +4,8 @@
       "Bash(dir \"e:\\\\Pensezy Edition\\\\Pensezy-Edition\")",
       "Bash(wc:*)",
       "Bash(npm run build:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npx shadcn@latest add:*)"
     ]
   }
 }

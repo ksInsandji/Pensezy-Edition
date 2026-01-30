@@ -56,6 +56,7 @@ export async function completeWithdrawal(transactionId: string) {
 /**
  * Valider une commande sans paiement (gratuit)
  * Utilisé par l'admin pour offrir des produits ou valider des commandes spéciales
+ * Peut être utilisé sur n'importe quel statut de commande (pending, cancelled, etc.)
  */
 export async function validateOrderWithoutPayment(orderId: string, buyerId: string) {
   try {
@@ -80,9 +81,8 @@ export async function validateOrderWithoutPayment(orderId: string, buyerId: stri
       return { error: "Commande non trouvée" };
     }
 
-    if (order.status !== "pending") {
-      return { error: "Cette commande a déjà été traitée" };
-    }
+    // Permettre la validation même si déjà payée (re-validation) ou annulée
+    // Seule restriction: ne pas re-créer les accès si déjà existants
 
     // 2. Mettre à jour le statut de la commande
     const { error: updateError } = await supabase
@@ -97,33 +97,38 @@ export async function validateOrderWithoutPayment(orderId: string, buyerId: stri
       return { error: "Erreur lors de la mise à jour de la commande" };
     }
 
-    // 3. Créer les entrées user_books pour les livres numériques
-    const userBooks = order.order_items
-      .filter((item: any) => item.listing?.type === "digital")
-      .map((item: any) => ({
-        user_id: buyerId,
-        book_id: item.listing.book_id,
-        purchased_at: new Date().toISOString(),
-        purchase_type: "gift", // Marqué comme cadeau
-        order_item_id: item.id,
-      }));
+    // 3. Créer les entrées user_books pour les livres numériques (si pas déjà existants)
+    for (const item of order.order_items) {
+      if (item.listing?.type === "digital") {
+        // Vérifier si l'accès existe déjà
+        const { data: existingAccess } = await supabase
+          .from("user_books")
+          .select("id")
+          .eq("user_id", buyerId)
+          .eq("book_id", item.listing.book_id)
+          .single();
 
-    if (userBooks.length > 0) {
-      const { error: userBooksError } = await supabase.from("user_books").insert(userBooks);
-
-      if (userBooksError) {
-        console.error("Error creating user_books:", userBooksError);
-        // Ne pas faire échouer la validation pour ça
+        if (!existingAccess) {
+          await supabase.from("user_books").insert({
+            user_id: buyerId,
+            book_id: item.listing.book_id,
+            purchased_at: new Date().toISOString(),
+            purchase_type: "gift",
+            order_item_id: item.id,
+          });
+        }
       }
     }
 
-    // 4. Mettre à jour le stock pour les livres physiques
-    for (const item of order.order_items) {
-      if (item.listing?.type === "physical") {
-        await supabase.rpc("decrement_stock", {
-          listing_id: item.listing.id,
-          amount: item.quantity,
-        });
+    // 4. Mettre à jour le stock pour les livres physiques (seulement si pas déjà traité)
+    if (order.status !== "paid") {
+      for (const item of order.order_items) {
+        if (item.listing?.type === "physical") {
+          await supabase.rpc("decrement_stock", {
+            listing_id: item.listing.id,
+            amount: item.quantity,
+          });
+        }
       }
     }
 
@@ -198,6 +203,115 @@ export async function deleteUser(userId: string) {
 
     revalidatePath("/admin");
     revalidatePath("/admin/users");
+    return { success: true };
+  } catch (e: any) {
+    return { error: e.message };
+  }
+}
+
+/**
+ * Modifier un produit (admin peut modifier n'importe quel produit)
+ */
+export async function adminUpdateProduct(
+  listingId: string,
+  data: {
+    price?: number;
+    stock?: number;
+    status?: "active" | "pending" | "rejected";
+    discount_percent?: number;
+  }
+) {
+  try {
+    const supabase = await checkAdmin();
+
+    const updateData: Record<string, any> = {};
+    if (data.price !== undefined) updateData.price = data.price;
+    if (data.stock !== undefined) updateData.stock = data.stock;
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.discount_percent !== undefined) updateData.discount_percent = data.discount_percent;
+
+    const { error } = await supabase
+      .from("listings")
+      .update(updateData)
+      .eq("id", listingId);
+
+    if (error) {
+      return { error: "Erreur lors de la mise à jour du produit" };
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/products");
+    revalidatePath("/marketplace");
+    return { success: true };
+  } catch (e: any) {
+    return { error: e.message };
+  }
+}
+
+/**
+ * Supprimer un produit (admin peut supprimer n'importe quel produit)
+ */
+export async function adminDeleteProduct(listingId: string) {
+  try {
+    const supabase = await checkAdmin();
+
+    // Récupérer le book_id pour vérifier s'il faut aussi supprimer le livre
+    const { data: listing } = await supabase
+      .from("listings")
+      .select("book_id")
+      .eq("id", listingId)
+      .single();
+
+    // Supprimer le listing
+    const { error } = await supabase.from("listings").delete().eq("id", listingId);
+
+    if (error) {
+      return { error: "Erreur lors de la suppression du produit" };
+    }
+
+    // Vérifier s'il reste d'autres listings pour ce livre
+    if (listing?.book_id) {
+      const { count } = await supabase
+        .from("listings")
+        .select("*", { count: "exact", head: true })
+        .eq("book_id", listing.book_id);
+
+      // Si plus de listings, supprimer aussi le livre
+      if (count === 0) {
+        await supabase.from("books").delete().eq("id", listing.book_id);
+      }
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/products");
+    revalidatePath("/marketplace");
+    return { success: true };
+  } catch (e: any) {
+    return { error: e.message };
+  }
+}
+
+/**
+ * Invalider une commande (remettre en pending ou annuler)
+ */
+export async function invalidateOrder(orderId: string, newStatus: "pending" | "cancelled") {
+  try {
+    const supabase = await checkAdmin();
+
+    const { error } = await supabase
+      .from("orders")
+      .update({
+        status: newStatus,
+        paid_at: newStatus === "pending" ? null : undefined
+      })
+      .eq("id", orderId);
+
+    if (error) {
+      return { error: "Erreur lors de la mise à jour de la commande" };
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/orders");
     return { success: true };
   } catch (e: any) {
     return { error: e.message };

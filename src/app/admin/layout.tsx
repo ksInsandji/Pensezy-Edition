@@ -16,11 +16,12 @@ import {
 
 const adminNavItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Tableau de bord" },
+  { href: "/admin/analytics", icon: BarChart3, label: "Analytics" },
   { href: "/admin/users", icon: Users, label: "Utilisateurs" },
   { href: "/admin/orders", icon: ShoppingBag, label: "Commandes" },
   { href: "/admin/products", icon: BookOpen, label: "Produits" },
   { href: "/admin/payments", icon: CreditCard, label: "Paiements" },
-  { href: "/admin/settings", icon: Settings, label: "Paramètres" },
+  { href: "/admin/settings", icon: Settings, label: "Parametres" },
 ];
 
 export default async function AdminLayout({
