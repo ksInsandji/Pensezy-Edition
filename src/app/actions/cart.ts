@@ -484,8 +484,9 @@ export async function validateCart(cartId: string) {
     }
 
     // Pour chaque item numérique, créer l'accès à la bibliothèque
-    for (const item of cart.cart_items) {
-      if (item.listing?.type === "digital") {
+    for (const item of cart.cart_items as any[]) {
+      const listingData = item.listing as { id: string; price: number; type: string; stock: number } | null;
+      if (listingData?.type === "digital") {
         // Récupérer le book_id depuis le listing
         const { data: listing } = await supabase
           .from("listings")
@@ -505,7 +506,7 @@ export async function validateCart(cartId: string) {
       }
 
       // Décrémenter le stock pour les produits physiques
-      if (item.listing?.type === "physical" && item.listing?.stock > 0) {
+      if (listingData?.type === "physical" && listingData?.stock > 0) {
         await supabase.rpc("decrement_stock", {
           listing_id: item.listing_id,
           amount: item.quantity,
