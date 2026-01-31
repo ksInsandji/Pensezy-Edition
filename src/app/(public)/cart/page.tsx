@@ -1,21 +1,56 @@
 "use client";
 
-import { useCartStore } from "@/store/cart-store";
+import { useCartStore, loadCartFromDB } from "@/store/cart-store";
 import { Button } from "@/components/ui/button";
-import { Trash2, Plus, Minus, ShoppingBag, ArrowRight } from "lucide-react";
+import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { removeItemFromCart, updateCartItemQuantity } from "@/app/actions/cart";
 
 export default function CartPage() {
-  const { items, removeItem, updateQuantity, getTotal, clearCart } = useCartStore();
+  const { items, removeItem, updateQuantity, getTotal, isLoading } = useCartStore();
   const [mounted, setMounted] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    setMounted(true);
+    const init = async () => {
+      // Vérifier si l'utilisateur est connecté
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserId(user?.id || null);
+
+      // Si connecté, charger le panier depuis la DB
+      if (user) {
+        await loadCartFromDB();
+      }
+
+      setMounted(true);
+    };
+    init();
   }, []);
 
-  if (!mounted) {
-    return <div className="min-h-screen bg-stone-50" />; // Eviter flash hydration
+  // Handlers avec sync DB
+  const handleRemoveItem = async (listingId: string) => {
+    removeItem(listingId);
+    if (userId) {
+      await removeItemFromCart(listingId);
+    }
+  };
+
+  const handleUpdateQuantity = async (listingId: string, quantity: number) => {
+    updateQuantity(listingId, quantity);
+    if (userId) {
+      await updateCartItemQuantity(listingId, quantity);
+    }
+  };
+
+  if (!mounted || isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-900" />
+      </div>
+    );
   }
 
   const total = getTotal();
@@ -94,7 +129,7 @@ export default function CartPage() {
                     {/* Quantity Controls */}
                     <div className="flex items-center border border-gray-200 rounded-lg bg-gray-50">
                         <button
-                            onClick={() => updateQuantity(item.listingId, item.quantity - 1)}
+                            onClick={() => handleUpdateQuantity(item.listingId, item.quantity - 1)}
                             disabled={item.quantity <= 1}
                             className="p-1 text-gray-500 hover:text-gray-900 disabled:opacity-30"
                         >
@@ -104,7 +139,7 @@ export default function CartPage() {
                             {item.quantity}
                         </span>
                         <button
-                            onClick={() => updateQuantity(item.listingId, item.quantity + 1)}
+                            onClick={() => handleUpdateQuantity(item.listingId, item.quantity + 1)}
                             disabled={item.type === 'digital' || (item.maxStock !== null && item.maxStock !== undefined && item.quantity >= item.maxStock)}
                             className="p-1 text-gray-500 hover:text-gray-900 disabled:opacity-30"
                         >
@@ -114,7 +149,7 @@ export default function CartPage() {
 
                     <button
                       type="button"
-                      onClick={() => removeItem(item.listingId)}
+                      onClick={() => handleRemoveItem(item.listingId)}
                       className="mt-4 text-sm font-medium text-red-600 hover:text-red-500 flex items-center"
                     >
                       <Trash2 className="w-4 h-4 mr-1" />

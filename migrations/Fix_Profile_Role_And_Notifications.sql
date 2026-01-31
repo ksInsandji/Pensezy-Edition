@@ -1,4 +1,18 @@
 -- =====================================================
+-- FIX 0: Ajouter 'seller' au type user_role
+-- =====================================================
+DO $$
+BEGIN
+  -- Ajouter 'seller' si pas deja present
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_enum WHERE enumlabel = 'seller'
+    AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'user_role')
+  ) THEN
+    ALTER TYPE user_role ADD VALUE 'seller';
+  END IF;
+END $$;
+
+-- =====================================================
 -- FIX 1: Corriger le trigger de creation de profil
 -- Le role doit etre copie depuis user_metadata
 -- =====================================================
@@ -8,20 +22,40 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 DROP FUNCTION IF EXISTS public.handle_new_user();
 
 -- Creer la fonction qui copie le role depuis user_metadata
+-- Version robuste qui gere les cas ou le role n'est pas valide
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  user_role_value user_role;
+  role_text TEXT;
 BEGIN
+  -- Recuperer le role depuis les metadonnees
+  role_text := NEW.raw_user_meta_data->>'role';
+
+  -- Convertir en user_role avec fallback sur 'user'
+  BEGIN
+    IF role_text IS NOT NULL AND role_text != '' THEN
+      user_role_value := role_text::user_role;
+    ELSE
+      user_role_value := 'user'::user_role;
+    END IF;
+  EXCEPTION WHEN invalid_text_representation THEN
+    user_role_value := 'user'::user_role;
+  END;
+
+  -- Inserer le profil
   INSERT INTO public.profiles (id, full_name, role, email)
   VALUES (
     NEW.id,
     COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
-    COALESCE((NEW.raw_user_meta_data->>'role')::user_role, 'user'),
+    user_role_value,
     NEW.email
   )
   ON CONFLICT (id) DO UPDATE SET
     full_name = COALESCE(EXCLUDED.full_name, profiles.full_name),
-    role = COALESCE((NEW.raw_user_meta_data->>'role')::user_role, profiles.role),
+    role = COALESCE(EXCLUDED.role, profiles.role),
     email = COALESCE(EXCLUDED.email, profiles.email);
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

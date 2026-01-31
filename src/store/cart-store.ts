@@ -16,6 +16,7 @@ export type CartItem = {
 type CartState = {
   items: CartItem[]
   isHydrated: boolean
+  isLoading: boolean
   addItem: (item: CartItem) => void
   removeItem: (listingId: string) => void
   updateQuantity: (listingId: string, quantity: number) => void
@@ -24,6 +25,7 @@ type CartState = {
   getCount: () => number
   setItems: (items: CartItem[]) => void
   setHydrated: (state: boolean) => void
+  setLoading: (state: boolean) => void
 }
 
 export const useCartStore = create<CartState>()(
@@ -31,6 +33,7 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       items: [],
       isHydrated: false,
+      isLoading: false,
 
       addItem: (newItem) => {
         set((state) => {
@@ -90,10 +93,12 @@ export const useCartStore = create<CartState>()(
         return get().items.reduce((count, item) => count + item.quantity, 0)
       },
 
-      // Nouvelle fonction pour definir les items (utilisee lors de la sync depuis la DB)
+      // Fonction pour definir les items (utilisee lors de la sync depuis la DB)
       setItems: (items) => set({ items }),
 
       setHydrated: (state) => set({ isHydrated: state }),
+
+      setLoading: (state) => set({ isLoading: state }),
     }),
     {
       name: 'pensezy-cart',
@@ -106,35 +111,72 @@ export const useCartStore = create<CartState>()(
   )
 )
 
-// Hook pour synchroniser le panier avec la base de donnees
-export async function syncCartWithDatabase(userId: string | null) {
+/**
+ * Charger le panier depuis la base de données
+ * Appelé sur les pages qui affichent le panier
+ */
+export async function loadCartFromDB() {
   if (typeof window === 'undefined') return
 
-  const { syncCartToDatabase, loadCartFromDatabase } = await import('@/app/actions/cart')
   const store = useCartStore.getState()
+  store.setLoading(true)
 
-  if (userId) {
-    // Utilisateur connecte: charger depuis DB et fusionner avec local
+  try {
+    const { loadCartFromDatabase } = await import('@/app/actions/cart')
     const { items: dbItems } = await loadCartFromDatabase()
 
     if (dbItems && dbItems.length > 0) {
-      // Fusionner: items locaux + items DB (sans doublons)
-      const localItems = store.items
-      const mergedItems: CartItem[] = [...dbItems]
+      // Remplacer le panier local par celui de la DB
+      store.setItems(dbItems)
+    }
+  } catch (error) {
+    console.error('Erreur chargement panier:', error)
+  } finally {
+    store.setLoading(false)
+  }
+}
 
-      for (const localItem of localItems) {
-        const existsInDb = mergedItems.find(i => i.listingId === localItem.listingId)
-        if (!existsInDb) {
-          mergedItems.push(localItem)
-        }
+/**
+ * Synchroniser le panier avec la base de données
+ * Appelé quand l'utilisateur se connecte
+ */
+export async function syncCartWithDatabase(userId: string | null) {
+  if (typeof window === 'undefined' || !userId) return
+
+  const store = useCartStore.getState()
+  store.setLoading(true)
+
+  try {
+    const { syncCartToDatabase, loadCartFromDatabase } = await import('@/app/actions/cart')
+
+    // 1. Charger le panier de la DB
+    const { items: dbItems } = await loadCartFromDatabase()
+
+    // 2. Récupérer les items locaux
+    const localItems = store.items
+
+    // 3. Fusionner: DB prioritaire + local (sans doublons)
+    const mergedItems: CartItem[] = [...(dbItems || [])]
+
+    for (const localItem of localItems) {
+      const existsInDb = mergedItems.find(i => i.listingId === localItem.listingId)
+      if (!existsInDb) {
+        mergedItems.push(localItem)
       }
-
-      store.setItems(mergedItems)
     }
 
-    // Sauvegarder l'etat fusionne dans la DB
-    await syncCartToDatabase(
-      store.items.map(i => ({ listingId: i.listingId, quantity: i.quantity }))
-    )
+    // 4. Mettre à jour le store local
+    store.setItems(mergedItems)
+
+    // 5. Sauvegarder l'état fusionné dans la DB
+    if (mergedItems.length > 0) {
+      await syncCartToDatabase(
+        mergedItems.map(i => ({ listingId: i.listingId, quantity: i.quantity }))
+      )
+    }
+  } catch (error) {
+    console.error('Erreur sync panier:', error)
+  } finally {
+    store.setLoading(false)
   }
 }

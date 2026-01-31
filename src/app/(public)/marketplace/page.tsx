@@ -64,7 +64,7 @@ export default async function MarketplacePage(props: { searchParams: SearchParam
   const { data: listings, error } = await dbQuery;
 
   if (error) {
-    console.error("Error fetching marketplace listings:", error);
+    console.log("Error fetching marketplace listings:", error);
   }
 
   // Grouper les listings par livre + vendeur pour éviter les doublons
