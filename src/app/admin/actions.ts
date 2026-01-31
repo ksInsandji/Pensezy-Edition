@@ -318,6 +318,60 @@ export async function invalidateOrder(orderId: string, newStatus: "pending" | "c
   }
 }
 
+/**
+ * Supprimer définitivement une commande annulée
+ * Seules les commandes avec le statut "cancelled" peuvent être supprimées
+ */
+export async function deleteOrder(orderId: string) {
+  try {
+    const supabase = await checkAdmin();
+
+    // Vérifier que la commande existe et est annulée
+    const { data: order, error: fetchError } = await supabase
+      .from("orders")
+      .select("id, status")
+      .eq("id", orderId)
+      .single();
+
+    if (fetchError || !order) {
+      return { error: "Commande non trouvée" };
+    }
+
+    if (order.status !== "cancelled") {
+      return { error: "Seules les commandes annulées peuvent être supprimées" };
+    }
+
+    // Supprimer d'abord les order_items
+    const { error: itemsError } = await supabase
+      .from("order_items")
+      .delete()
+      .eq("order_id", orderId);
+
+    if (itemsError) {
+      console.error("Error deleting order items:", itemsError);
+      return { error: "Erreur lors de la suppression des items de commande" };
+    }
+
+    // Supprimer la commande
+    const { error: orderError } = await supabase
+      .from("orders")
+      .delete()
+      .eq("id", orderId);
+
+    if (orderError) {
+      console.error("Error deleting order:", orderError);
+      return { error: "Erreur lors de la suppression de la commande" };
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/orders");
+    return { success: true };
+  } catch (e: any) {
+    console.error("Error in deleteOrder:", e);
+    return { error: e.message };
+  }
+}
+
 // ==================== GESTION DES PANIERS ====================
 
 /**

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getAllCarts, deleteCart, validateCart } from "@/app/actions/cart";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog, ConfirmDialogVariant } from "@/components/ui/confirm-dialog";
 import {
   ShoppingCart,
   Trash2,
@@ -33,10 +34,20 @@ type CartData = {
   }>;
 };
 
+type DialogConfig = {
+  open: boolean;
+  title: string;
+  description: string;
+  confirmText: string;
+  variant: ConfirmDialogVariant;
+  action: () => Promise<void>;
+};
+
 export default function AdminCartsPage() {
   const [carts, setCarts] = useState<CartData[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [dialogConfig, setDialogConfig] = useState<DialogConfig | null>(null);
   const { toast } = useToast();
 
   const loadCarts = async () => {
@@ -58,48 +69,66 @@ export default function AdminCartsPage() {
     loadCarts();
   }, []);
 
-  const handleDelete = async (cartId: string) => {
-    if (!confirm("Supprimer ce panier ? Cette action est irreversible.")) return;
+  const openDeleteDialog = (cartId: string, userName: string) => {
+    setDialogConfig({
+      open: true,
+      title: "Supprimer le panier",
+      description: `Voulez-vous supprimer le panier de ${userName} ? Cette action est irréversible.`,
+      confirmText: "Supprimer",
+      variant: "danger",
+      action: async () => {
+        setActionLoading(cartId);
+        const { error } = await deleteCart(cartId);
 
-    setActionLoading(cartId);
-    const { error } = await deleteCart(cartId);
-
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: error,
-      });
-    } else {
-      toast({
-        title: "Panier supprime",
-        description: "Le panier a ete supprime avec succes.",
-      });
-      setCarts(carts.filter((c) => c.id !== cartId));
-    }
-    setActionLoading(null);
+        if (error) {
+          toast({
+            variant: "destructive",
+            title: "Erreur",
+            description: error,
+          });
+        } else {
+          toast({
+            title: "Panier supprimé",
+            description: "Le panier a été supprimé avec succès.",
+          });
+          setCarts(carts.filter((c) => c.id !== cartId));
+        }
+        setActionLoading(null);
+      },
+    });
   };
 
-  const handleValidate = async (cartId: string) => {
-    if (!confirm("Valider ce panier et creer une commande payee ?")) return;
+  const openValidateDialog = (cartId: string, userName: string, total: number) => {
+    setDialogConfig({
+      open: true,
+      title: "Valider le panier",
+      description: `Voulez-vous valider le panier de ${userName} (${total.toLocaleString()} FCFA) et créer une commande payée ? Le client aura accès aux produits immédiatement.`,
+      confirmText: "Valider",
+      variant: "success",
+      action: async () => {
+        setActionLoading(cartId);
+        const { error, orderId } = await validateCart(cartId);
 
-    setActionLoading(cartId);
-    const { error, orderId } = await validateCart(cartId);
+        if (error) {
+          toast({
+            variant: "destructive",
+            title: "Erreur",
+            description: error,
+          });
+        } else {
+          toast({
+            title: "Panier validé",
+            description: `Commande #${orderId?.slice(0, 8)} créée avec succès.`,
+          });
+          setCarts(carts.filter((c) => c.id !== cartId));
+        }
+        setActionLoading(null);
+      },
+    });
+  };
 
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: error,
-      });
-    } else {
-      toast({
-        title: "Panier valide",
-        description: `Commande #${orderId?.slice(0, 8)} creee avec succes.`,
-      });
-      setCarts(carts.filter((c) => c.id !== cartId));
-    }
-    setActionLoading(null);
+  const closeDialog = () => {
+    setDialogConfig(null);
   };
 
   const calculateCartTotal = (cart: CartData) => {
@@ -136,7 +165,7 @@ export default function AdminCartsPage() {
           <ShoppingCart className="w-16 h-16 mx-auto text-slate-300 mb-4" />
           <h2 className="text-xl font-semibold text-slate-700">Aucun panier actif</h2>
           <p className="text-slate-500 mt-2">
-            Les paniers des utilisateurs apparaitront ici.
+            Les paniers des utilisateurs apparaîtront ici.
           </p>
         </div>
       ) : (
@@ -206,7 +235,7 @@ export default function AdminCartsPage() {
                                 : "bg-green-100 text-green-700"
                             }`}
                           >
-                            {item.listing?.type === "digital" ? "Numerique" : "Physique"}
+                            {item.listing?.type === "digital" ? "Numérique" : "Physique"}
                           </span>
                           <span className="text-sm text-slate-600">
                             x{item.quantity}
@@ -218,7 +247,7 @@ export default function AdminCartsPage() {
                           {((item.listing?.price || 0) * item.quantity).toLocaleString()} FCFA
                         </p>
                         <p className="text-xs text-slate-500">
-                          {item.listing?.price?.toLocaleString()} FCFA/unite
+                          {item.listing?.price?.toLocaleString()} FCFA/unité
                         </p>
                       </div>
                     </div>
@@ -232,7 +261,7 @@ export default function AdminCartsPage() {
                   variant="outline"
                   size="sm"
                   className="text-red-600 border-red-200 hover:bg-red-50"
-                  onClick={() => handleDelete(cart.id)}
+                  onClick={() => openDeleteDialog(cart.id, cart.user?.full_name || "cet utilisateur")}
                   disabled={actionLoading === cart.id}
                 >
                   {actionLoading === cart.id ? (
@@ -247,7 +276,11 @@ export default function AdminCartsPage() {
                 <Button
                   size="sm"
                   className="bg-green-600 hover:bg-green-700"
-                  onClick={() => handleValidate(cart.id)}
+                  onClick={() => openValidateDialog(
+                    cart.id,
+                    cart.user?.full_name || "cet utilisateur",
+                    calculateCartTotal(cart)
+                  )}
                   disabled={actionLoading === cart.id || cart.cart_items.length === 0}
                 >
                   {actionLoading === cart.id ? (
@@ -255,7 +288,7 @@ export default function AdminCartsPage() {
                   ) : (
                     <>
                       <CheckCircle className="w-4 h-4 mr-2" />
-                      Valider (Paye)
+                      Valider (Payé)
                     </>
                   )}
                 </Button>
@@ -263,6 +296,21 @@ export default function AdminCartsPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Modern Confirm Dialog */}
+      {dialogConfig && (
+        <ConfirmDialog
+          open={dialogConfig.open}
+          onOpenChange={(open) => !open && closeDialog()}
+          title={dialogConfig.title}
+          description={dialogConfig.description}
+          confirmText={dialogConfig.confirmText}
+          cancelText="Annuler"
+          variant={dialogConfig.variant}
+          onConfirm={dialogConfig.action}
+          isLoading={actionLoading !== null}
+        />
       )}
     </div>
   );

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { ConfirmDialog, ConfirmDialogVariant } from "@/components/ui/confirm-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,14 +14,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   CheckCircle,
-  XCircle,
   Loader2,
   Gift,
   MoreVertical,
   RotateCcw,
   Ban,
+  Trash2,
 } from "lucide-react";
-import { validateOrderWithoutPayment, cancelOrder, invalidateOrder } from "../actions";
+import { validateOrderWithoutPayment, cancelOrder, invalidateOrder, deleteOrder } from "../actions";
 
 interface OrderActionsProps {
   orderId: string;
@@ -28,23 +29,25 @@ interface OrderActionsProps {
   currentStatus: string;
 }
 
+type DialogConfig = {
+  open: boolean;
+  title: string;
+  description: string;
+  confirmText: string;
+  variant: ConfirmDialogVariant;
+  action: () => Promise<void>;
+};
+
 export function OrderActions({ orderId, buyerId, currentStatus }: OrderActionsProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [dialogConfig, setDialogConfig] = useState<DialogConfig | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
-  const handleValidate = async () => {
-    if (
-      !confirm(
-        "Voulez-vous valider cette commande sans paiement ? Le client aura acces aux produits."
-      )
-    ) {
-      return;
-    }
-
+  const executeAction = async (action: () => Promise<any>, successTitle: string, successDescription: string) => {
     setIsLoading(true);
     try {
-      const result = await validateOrderWithoutPayment(orderId, buyerId);
+      const result = await action();
 
       if (result.error) {
         toast({
@@ -54,9 +57,8 @@ export function OrderActions({ orderId, buyerId, currentStatus }: OrderActionsPr
         });
       } else {
         toast({
-          title: "Commande validee",
-          description:
-            "La commande a ete validee avec succes. Le client peut maintenant acceder a ses achats.",
+          title: successTitle,
+          description: successDescription,
         });
         router.refresh();
       }
@@ -71,132 +73,178 @@ export function OrderActions({ orderId, buyerId, currentStatus }: OrderActionsPr
     }
   };
 
-  const handleCancel = async () => {
-    if (!confirm("Voulez-vous annuler cette commande ?")) {
-      return;
-    }
+  const openValidateDialog = () => {
+    setDialogConfig({
+      open: true,
+      title: "Valider la commande",
+      description: "Voulez-vous valider cette commande sans paiement ? Le client aura accès aux produits immédiatement.",
+      confirmText: "Valider",
+      variant: "success",
+      action: async () => {
+        await executeAction(
+          () => validateOrderWithoutPayment(orderId, buyerId),
+          "Commande validée",
+          "La commande a été validée avec succès. Le client peut maintenant accéder à ses achats."
+        );
+      },
+    });
+  };
 
-    setIsLoading(true);
-    try {
-      const result = await cancelOrder(orderId);
+  const openCancelDialog = () => {
+    setDialogConfig({
+      open: true,
+      title: "Annuler la commande",
+      description: "Voulez-vous annuler cette commande ? Cette action changera le statut de la commande.",
+      confirmText: "Annuler la commande",
+      variant: "warning",
+      action: async () => {
+        await executeAction(
+          () => cancelOrder(orderId),
+          "Commande annulée",
+          "La commande a été annulée."
+        );
+      },
+    });
+  };
 
-      if (result.error) {
-        toast({
-          variant: "destructive",
-          title: "Erreur",
-          description: result.error,
-        });
-      } else {
-        toast({
-          title: "Commande annulee",
-          description: "La commande a ete annulee.",
-        });
-        router.refresh();
-      }
-    } catch {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: "Une erreur est survenue",
+  const openInvalidateDialog = (newStatus: "pending" | "cancelled") => {
+    if (newStatus === "pending") {
+      setDialogConfig({
+        open: true,
+        title: "Remettre en attente",
+        description: "Voulez-vous remettre cette commande en attente ? Le statut sera changé en 'pending'.",
+        confirmText: "Remettre en attente",
+        variant: "warning",
+        action: async () => {
+          await executeAction(
+            () => invalidateOrder(orderId, newStatus),
+            "Commande en attente",
+            "La commande a été remise en attente."
+          );
+        },
       });
-    } finally {
-      setIsLoading(false);
+    } else {
+      setDialogConfig({
+        open: true,
+        title: "Annuler la commande",
+        description: "Voulez-vous annuler cette commande ?",
+        confirmText: "Annuler",
+        variant: "warning",
+        action: async () => {
+          await executeAction(
+            () => invalidateOrder(orderId, newStatus),
+            "Commande annulée",
+            "La commande a été annulée."
+          );
+        },
+      });
     }
   };
 
-  const handleInvalidate = async (newStatus: "pending" | "cancelled") => {
-    const message =
-      newStatus === "pending"
-        ? "Voulez-vous remettre cette commande en attente ?"
-        : "Voulez-vous annuler cette commande ?";
+  const openDeleteDialog = () => {
+    setDialogConfig({
+      open: true,
+      title: "Supprimer définitivement",
+      description: "Cette action est IRRÉVERSIBLE. La commande et tous ses détails seront supprimés de la base de données.",
+      confirmText: "Supprimer",
+      variant: "danger",
+      action: async () => {
+        await executeAction(
+          () => deleteOrder(orderId),
+          "Commande supprimée",
+          "La commande a été supprimée définitivement."
+        );
+      },
+    });
+  };
 
-    if (!confirm(message)) {
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const result = await invalidateOrder(orderId, newStatus);
-
-      if (result.error) {
-        toast({
-          variant: "destructive",
-          title: "Erreur",
-          description: result.error,
-        });
-      } else {
-        toast({
-          title: newStatus === "pending" ? "Commande en attente" : "Commande annulee",
-          description:
-            newStatus === "pending"
-              ? "La commande a ete remise en attente."
-              : "La commande a ete annulee.",
-        });
-        router.refresh();
-      }
-    } catch {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: "Une erreur est survenue",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+  const closeDialog = () => {
+    setDialogConfig(null);
   };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" disabled={isLoading}>
-          {isLoading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm" disabled={isLoading}>
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <>
+                <MoreVertical className="w-4 h-4 mr-2" />
+                Actions
+              </>
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-52">
+          {/* Valider gratuitement - disponible sauf si deja payee */}
+          {currentStatus !== "paid" && (
+            <DropdownMenuItem onClick={openValidateDialog}>
+              <Gift className="w-4 h-4 mr-2 text-green-600" />
+              Valider gratuitement
+            </DropdownMenuItem>
+          )}
+
+          {/* Re-valider - disponible si deja payee (pour corriger des acces manquants) */}
+          {currentStatus === "paid" && (
+            <DropdownMenuItem onClick={openValidateDialog}>
+              <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
+              Re-valider les accès
+            </DropdownMenuItem>
+          )}
+
+          <DropdownMenuSeparator />
+
+          {/* Remettre en attente - disponible si payee ou annulee */}
+          {(currentStatus === "paid" || currentStatus === "cancelled") && (
+            <DropdownMenuItem onClick={() => openInvalidateDialog("pending")}>
+              <RotateCcw className="w-4 h-4 mr-2 text-yellow-600" />
+              Remettre en attente
+            </DropdownMenuItem>
+          )}
+
+          {/* Annuler - disponible sauf si deja annulee */}
+          {currentStatus !== "cancelled" && (
+            <DropdownMenuItem
+              onClick={openCancelDialog}
+              className="text-red-600 focus:text-red-600"
+            >
+              <Ban className="w-4 h-4 mr-2" />
+              Annuler
+            </DropdownMenuItem>
+          )}
+
+          {/* Supprimer définitivement - seulement pour les commandes annulées */}
+          {currentStatus === "cancelled" && (
             <>
-              <MoreVertical className="w-4 h-4 mr-2" />
-              Actions
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={openDeleteDialog}
+                className="text-red-700 focus:text-red-700 focus:bg-red-50"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Supprimer définitivement
+              </DropdownMenuItem>
             </>
           )}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {/* Valider gratuitement - disponible sauf si deja payee */}
-        {currentStatus !== "paid" && (
-          <DropdownMenuItem onClick={handleValidate}>
-            <Gift className="w-4 h-4 mr-2 text-green-600" />
-            Valider gratuitement
-          </DropdownMenuItem>
-        )}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-        {/* Re-valider - disponible si deja payee (pour corriger des acces manquants) */}
-        {currentStatus === "paid" && (
-          <DropdownMenuItem onClick={handleValidate}>
-            <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
-            Re-valider les acces
-          </DropdownMenuItem>
-        )}
-
-        <DropdownMenuSeparator />
-
-        {/* Remettre en attente - disponible si payee ou annulee */}
-        {(currentStatus === "paid" || currentStatus === "cancelled") && (
-          <DropdownMenuItem onClick={() => handleInvalidate("pending")}>
-            <RotateCcw className="w-4 h-4 mr-2 text-yellow-600" />
-            Remettre en attente
-          </DropdownMenuItem>
-        )}
-
-        {/* Annuler - disponible sauf si deja annulee */}
-        {currentStatus !== "cancelled" && (
-          <DropdownMenuItem
-            onClick={handleCancel}
-            className="text-red-600 focus:text-red-600"
-          >
-            <Ban className="w-4 h-4 mr-2" />
-            Annuler
-          </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      {/* Modern Confirm Dialog */}
+      {dialogConfig && (
+        <ConfirmDialog
+          open={dialogConfig.open}
+          onOpenChange={(open) => !open && closeDialog()}
+          title={dialogConfig.title}
+          description={dialogConfig.description}
+          confirmText={dialogConfig.confirmText}
+          cancelText="Annuler"
+          variant={dialogConfig.variant}
+          onConfirm={dialogConfig.action}
+          isLoading={isLoading}
+        />
+      )}
+    </>
   );
 }
